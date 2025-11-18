@@ -1,0 +1,227 @@
+from rest_framework import serializers
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from .models import PayrollUpload, Employee, SalaryComponent, PayrollReport
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    """Serializer for user registration"""
+    
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        validators=[validate_password],
+        style={'input_type': 'password'}
+    )
+    password2 = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        label='Confirm Password'
+    )
+    
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'password2']
+        extra_kwargs = {
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+            'email': {'required': True}
+        }
+    
+    def validate(self, attrs):
+        """Validate that passwords match"""
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({
+                "password": "Password fields didn't match."
+            })
+        return attrs
+    
+    def validate_email(self, value):
+        """Check if email already exists"""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def validate_username(self, value):
+        """Check if username already exists"""
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
+    
+    def create(self, validated_data):
+        """Create new user"""
+        validated_data.pop('password2')
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            password=validated_data['password']
+        )
+        return user
+
+
+class UserLoginSerializer(serializers.Serializer):
+    """Serializer for user login"""
+    
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    
+    def validate(self, attrs):
+        """Validate user credentials"""
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        if username and password:
+            user = authenticate(username=username, password=password)
+            
+            if not user:
+                raise serializers.ValidationError(
+                    'Unable to log in with provided credentials.',
+                    code='authorization'
+                )
+            
+            if not user.is_active:
+                raise serializers.ValidationError(
+                    'User account is disabled.',
+                    code='authorization'
+                )
+            
+            attrs['user'] = user
+            return attrs
+        else:
+            raise serializers.ValidationError(
+                'Must include "username" and "password".',
+                code='authorization'
+            )
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Serializer for user details"""
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'date_joined', 'last_login']
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Serializer for password change"""
+    
+    old_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    new_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        validators=[validate_password],
+        style={'input_type': 'password'}
+    )
+    new_password2 = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'},
+        label='Confirm New Password'
+    )
+    
+    def validate(self, attrs):
+        """Validate passwords"""
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({
+                "new_password": "New password fields didn't match."
+            })
+        return attrs
+    
+    def validate_old_password(self, value):
+        """Validate old password"""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Old password is incorrect.")
+        return value
+
+
+class SalaryComponentSerializer(serializers.ModelSerializer):
+    """Serializer for salary components"""
+    
+    class Meta:
+        model = SalaryComponent
+        fields = [
+            'basic_pay', 'hra', 'variable_pay', 'special_allowance', 
+            'other_allowances', 'gross_salary', 'provident_fund', 
+            'professional_tax', 'income_tax', 'other_deductions',
+            'total_deductions', 'net_salary', 'take_home_pay'
+        ]
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    """Serializer for employee with salary details"""
+    
+    salary = SalaryComponentSerializer(read_only=True)
+    
+    class Meta:
+        model = Employee
+        fields = [
+            'id', 'employee_id', 'name', 'email', 
+            'department', 'designation', 'salary'
+        ]
+
+
+class PayrollUploadSerializer(serializers.ModelSerializer):
+    """Serializer for payroll upload"""
+    
+    user = UserSerializer(read_only=True)
+    employees_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PayrollUpload
+        fields = [
+            'id', 'user', 'file', 'filename', 'status', 
+            'total_employees', 'employees_count', 'upload_date', 
+            'processed_date', 'error_message'
+        ]
+        read_only_fields = ['status', 'total_employees', 'upload_date', 'processed_date']
+    
+    def get_employees_count(self, obj):
+        """Get count of employees"""
+        return obj.employees.count()
+
+
+class PayrollUploadDetailSerializer(serializers.ModelSerializer):
+    """Detailed serializer for payroll upload with employees"""
+    
+    user = UserSerializer(read_only=True)
+    employees = EmployeeSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = PayrollUpload
+        fields = [
+            'id', 'user', 'file', 'filename', 'status', 
+            'total_employees', 'upload_date', 'processed_date', 
+            'error_message', 'employees'
+        ]
+
+
+class PayrollReportSerializer(serializers.ModelSerializer):
+    """Serializer for payroll reports"""
+    
+    upload = PayrollUploadSerializer(read_only=True)
+    file_size_kb = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PayrollReport
+        fields = [
+            'id', 'upload', 'report_type', 'file', 
+            'generated_date', 'file_size', 'file_size_kb'
+        ]
+    
+    def get_file_size_kb(self, obj):
+        """Convert file size to KB"""
+        return round(obj.file_size / 1024, 2)
