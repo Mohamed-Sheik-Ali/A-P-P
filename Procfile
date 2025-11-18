@@ -1,0 +1,1 @@
+web: gunicorn payroll_config.wsgi --log-file -
