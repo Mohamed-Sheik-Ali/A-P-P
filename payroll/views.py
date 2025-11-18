@@ -28,18 +28,11 @@ class UserRegistrationView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             
-            # Generate JWT token
-            token = generate_jwt_token(user)
-            
-            # Login the user
-            login(request, user)
-            
             return Response({
                 'success': True,
-                'message': 'User registered successfully',
+                'message': 'User registered successfully. Please login to continue.',
                 'data': {
-                    'user': UserSerializer(user).data,
-                    'token': token
+                    'user': UserSerializer(user).data
                 }
             }, status=status.HTTP_201_CREATED)
         
