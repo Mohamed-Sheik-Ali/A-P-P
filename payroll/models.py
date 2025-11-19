@@ -82,6 +82,8 @@ class SalaryComponent(models.Model):
     
     def calculate_salary(self):
         """Calculate all salary components"""
+        from decimal import Decimal
+        
         # Calculate gross salary
         self.gross_salary = (
             self.basic_pay + 
@@ -93,23 +95,27 @@ class SalaryComponent(models.Model):
         
         # Calculate deductions (simplified model)
         # PF: 12% of basic pay
-        self.provident_fund = self.basic_pay * 0.12
+        self.provident_fund = self.basic_pay * Decimal('0.12')
         
         # Professional Tax: Fixed amount (example: 200 for salaries above 15000)
         if self.gross_salary > 15000:
-            self.professional_tax = 200
+            self.professional_tax = Decimal('200.00')
         else:
-            self.professional_tax = 0
+            self.professional_tax = Decimal('0.00')
         
-        # Income Tax: Simplified progressive tax
-        if self.gross_salary <= 250000:
-            self.income_tax = 0
-        elif self.gross_salary <= 500000:
-            self.income_tax = (self.gross_salary - 250000) * 0.05
-        elif self.gross_salary <= 1000000:
-            self.income_tax = 12500 + (self.gross_salary - 500000) * 0.20
+        # Income Tax: Simplified progressive tax (monthly calculation)
+        annual_gross = self.gross_salary * 12
+        if annual_gross <= 250000:
+            self.income_tax = Decimal('0.00')
+        elif annual_gross <= 500000:
+            annual_tax = (annual_gross - Decimal('250000')) * Decimal('0.05')
+            self.income_tax = annual_tax / 12
+        elif annual_gross <= 1000000:
+            annual_tax = Decimal('12500') + (annual_gross - Decimal('500000')) * Decimal('0.20')
+            self.income_tax = annual_tax / 12
         else:
-            self.income_tax = 112500 + (self.gross_salary - 1000000) * 0.30
+            annual_tax = Decimal('112500') + (annual_gross - Decimal('1000000')) * Decimal('0.30')
+            self.income_tax = annual_tax / 12
         
         # Total deductions
         self.total_deductions = (

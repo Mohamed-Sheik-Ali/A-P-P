@@ -125,6 +125,7 @@ EMP002      | Jane Smith    | jane@company.com   | Marketing   | 45000     | 180
 ### Employee Data
 - `GET /api/uploads/{upload_id}/employees/` - List employees for upload
 - `GET /api/employees/{id}/` - Get employee details
+- `POST /api/employees/{id}/export/` - Export individual employee data (Excel/PDF)
 
 ### Reports
 - `POST /api/uploads/{upload_id}/reports/generate/` - Generate reports

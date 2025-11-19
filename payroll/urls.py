@@ -13,6 +13,7 @@ from .views import (
     PayrollUploadDetailView,
     EmployeeListView,
     EmployeeDetailView,
+    EmployeeExportView,
     GenerateReportView,
     ReportListView,
     ReportDetailView,
@@ -45,6 +46,7 @@ urlpatterns = [
     # Employee endpoints
     path('uploads/<int:upload_id>/employees/', EmployeeListView.as_view(), name='employee-list'),
     path('employees/<int:employee_id>/', EmployeeDetailView.as_view(), name='employee-detail'),
+    path('employees/<int:employee_id>/export/', EmployeeExportView.as_view(), name='employee-export'),
     
     # Report endpoints
     path('uploads/<int:upload_id>/reports/generate/', GenerateReportView.as_view(), name='generate-report'),

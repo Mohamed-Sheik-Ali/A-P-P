@@ -5,6 +5,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.http import HttpResponse
+from django.db import transaction
+from rest_framework.parsers import MultiPartParser, FormParser
+import tempfile
+import os
 
 from .serializers import (
     UserRegistrationSerializer,
@@ -198,7 +203,7 @@ from .serializers import (
     EmployeeSerializer,
     PayrollReportSerializer
 )
-from .utils import ExcelProcessor, ReportGenerator
+from .utils import ExcelProcessor, ReportGenerator, IndividualEmployeeReportGenerator, IndividualEmployeeReportGenerator
 
 
 class PayrollUploadView(APIView):
@@ -765,3 +770,55 @@ def api_documentation(request):
     }
     
     return Response(docs, status=status.HTTP_200_OK)
+
+
+class EmployeeExportView(APIView):
+    """
+    API endpoint for individual employee data export
+    POST: Generate Excel or PDF report for specific employee
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, employee_id):
+        try:
+            # Get employee and verify ownership
+            employee = Employee.objects.select_related('upload', 'salary').get(
+                id=employee_id,
+                upload__user=request.user
+            )
+        except Employee.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Employee not found or access denied'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get report type from request
+        report_type = request.data.get('report_type', 'excel').lower()
+        
+        if report_type not in ['excel', 'pdf']:
+            return Response({
+                'success': False,
+                'message': 'Invalid report type. Use "excel" or "pdf"'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Generate individual employee report
+            generator = IndividualEmployeeReportGenerator(employee)
+            
+            if report_type == 'excel':
+                file_content, filename, content_type = generator.generate_excel_report()
+            else:  # pdf
+                file_content, filename, content_type = generator.generate_pdf_report()
+            
+            # Return file as download response
+            response = HttpResponse(file_content, content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = len(file_content)
+            
+            return response
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Error generating report: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

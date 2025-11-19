@@ -507,3 +507,344 @@ class ReportGenerator:
             
         except Exception as e:
             raise Exception(f"Error generating PDF report: {str(e)}")
+
+
+class IndividualEmployeeReportGenerator:
+    """Class to generate individual employee reports"""
+    
+    def __init__(self, employee):
+        self.employee = employee
+        self.salary = employee.salary
+    
+    def generate_excel_report(self):
+        """Generate Excel report for individual employee"""
+        try:
+            # Create workbook
+            workbook = openpyxl.Workbook()
+            sheet = workbook.active
+            sheet.title = f"{self.employee.name} - Payroll"
+            
+            # Define styles
+            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF", size=12)
+            section_fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
+            section_font = Font(bold=True, size=11)
+            border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            # Title
+            sheet.merge_cells('A1:D1')
+            title_cell = sheet.cell(row=1, column=1)
+            title_cell.value = f"PAYROLL SLIP - {self.employee.name.upper()}"
+            title_cell.fill = header_fill
+            title_cell.font = header_font
+            title_cell.alignment = Alignment(horizontal='center', vertical='center')
+            title_cell.border = border
+            
+            # Employee Information Section
+            row = 3
+            sheet.merge_cells(f'A{row}:D{row}')
+            info_header = sheet.cell(row=row, column=1)
+            info_header.value = "EMPLOYEE INFORMATION"
+            info_header.fill = section_fill
+            info_header.font = section_font
+            info_header.border = border
+            
+            employee_info = [
+                ['Employee ID', self.employee.employee_id, 'Name', self.employee.name],
+                ['Department', self.employee.department or 'N/A', 'Designation', self.employee.designation or 'N/A'],
+                ['Email', self.employee.email or 'N/A', 'Upload Date', self.employee.upload.upload_date.strftime('%Y-%m-%d')]
+            ]
+            
+            row += 1
+            for info_row in employee_info:
+                for col_idx, value in enumerate(info_row, start=1):
+                    cell = sheet.cell(row=row, column=col_idx)
+                    cell.value = value
+                    if col_idx in [1, 3]:  # Labels
+                        cell.font = Font(bold=True)
+                    cell.border = border
+                    cell.alignment = Alignment(horizontal='center' if col_idx in [1, 3] else 'left')
+                row += 1
+            
+            # Earnings Section
+            row += 1
+            sheet.merge_cells(f'A{row}:D{row}')
+            earnings_header = sheet.cell(row=row, column=1)
+            earnings_header.value = "EARNINGS"
+            earnings_header.fill = section_fill
+            earnings_header.font = section_font
+            earnings_header.border = border
+            
+            earnings_data = [
+                ['Component', 'Amount', '', ''],
+                ['Basic Pay', f'₹{self.salary.basic_pay:,.2f}', '', ''],
+                ['HRA', f'₹{self.salary.hra:,.2f}', '', ''],
+                ['Variable Pay', f'₹{self.salary.variable_pay:,.2f}', '', ''],
+                ['Special Allowance', f'₹{self.salary.special_allowance:,.2f}', '', ''],
+                ['Other Allowances', f'₹{self.salary.other_allowances:,.2f}', '', ''],
+                ['GROSS SALARY', f'₹{self.salary.gross_salary:,.2f}', '', ''],
+            ]
+            
+            row += 1
+            for earn_row in earnings_data:
+                for col_idx, value in enumerate(earn_row, start=1):
+                    if col_idx <= 2:  # Only use first 2 columns
+                        cell = sheet.cell(row=row, column=col_idx)
+                        cell.value = value
+                        if 'GROSS SALARY' in value or 'Component' in value:
+                            cell.font = Font(bold=True)
+                            if 'GROSS SALARY' in value:
+                                cell.fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+                        cell.border = border
+                        cell.alignment = Alignment(horizontal='left' if col_idx == 1 else 'right')
+                row += 1
+            
+            # Deductions Section
+            row += 1
+            sheet.merge_cells(f'A{row}:D{row}')
+            deductions_header = sheet.cell(row=row, column=1)
+            deductions_header.value = "DEDUCTIONS"
+            deductions_header.fill = section_fill
+            deductions_header.font = section_font
+            deductions_header.border = border
+            
+            deductions_data = [
+                ['Component', 'Amount', '', ''],
+                ['Provident Fund (12%)', f'₹{self.salary.provident_fund:,.2f}', '', ''],
+                ['Professional Tax', f'₹{self.salary.professional_tax:,.2f}', '', ''],
+                ['Income Tax', f'₹{self.salary.income_tax:,.2f}', '', ''],
+                ['Other Deductions', f'₹{self.salary.other_deductions:,.2f}', '', ''],
+                ['TOTAL DEDUCTIONS', f'₹{self.salary.total_deductions:,.2f}', '', ''],
+            ]
+            
+            row += 1
+            for deduct_row in deductions_data:
+                for col_idx, value in enumerate(deduct_row, start=1):
+                    if col_idx <= 2:  # Only use first 2 columns
+                        cell = sheet.cell(row=row, column=col_idx)
+                        cell.value = value
+                        if 'TOTAL DEDUCTIONS' in value or 'Component' in value:
+                            cell.font = Font(bold=True)
+                            if 'TOTAL DEDUCTIONS' in value:
+                                cell.fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+                        cell.border = border
+                        cell.alignment = Alignment(horizontal='left' if col_idx == 1 else 'right')
+                row += 1
+            
+            # Net Salary Section
+            row += 1
+            sheet.merge_cells(f'A{row}:B{row}')
+            net_cell = sheet.cell(row=row, column=1)
+            net_cell.value = f"NET SALARY: ₹{self.salary.net_salary:,.2f}"
+            net_cell.fill = PatternFill(start_color="70AD47", end_color="70AD47", fill_type="solid")
+            net_cell.font = Font(bold=True, color="FFFFFF", size=14)
+            net_cell.alignment = Alignment(horizontal='center', vertical='center')
+            net_cell.border = border
+            
+            # Adjust column widths
+            sheet.column_dimensions['A'].width = 20
+            sheet.column_dimensions['B'].width = 15
+            sheet.column_dimensions['C'].width = 15
+            sheet.column_dimensions['D'].width = 20
+            
+            # Save to BytesIO
+            excel_buffer = BytesIO()
+            workbook.save(excel_buffer)
+            excel_buffer.seek(0)
+            excel_content = excel_buffer.read()
+            
+            filename = f"{self.employee.name.replace(' ', '_')}_payroll_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            
+            return excel_content, filename, content_type
+            
+        except Exception as e:
+            raise Exception(f"Error generating Excel report: {str(e)}")
+    
+    def generate_pdf_report(self):
+        """Generate PDF report for individual employee"""
+        try:
+            # Create PDF buffer
+            pdf_buffer = BytesIO()
+            doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, 
+                                  rightMargin=50, leftMargin=50, 
+                                  topMargin=50, bottomMargin=50)
+            
+            # Get styles
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                spaceAfter=30,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor('#4472C4')
+            )
+            
+            heading_style = ParagraphStyle(
+                'CustomHeading',
+                parent=styles['Heading2'],
+                fontSize=12,
+                spaceAfter=12,
+                textColor=colors.HexColor('#2F5597')
+            )
+            
+            # Build PDF elements
+            elements = []
+            
+            # Title
+            title = Paragraph(f"PAYROLL SLIP - {self.employee.name.upper()}", title_style)
+            elements.append(title)
+            
+            # Employee Information
+            emp_heading = Paragraph("Employee Information", heading_style)
+            elements.append(emp_heading)
+            
+            emp_data = [
+                ['Employee ID', self.employee.employee_id],
+                ['Name', self.employee.name],
+                ['Department', self.employee.department or 'N/A'],
+                ['Designation', self.employee.designation or 'N/A'],
+                ['Email', self.employee.email or 'N/A'],
+                ['Pay Period', self.employee.upload.upload_date.strftime('%B %Y')]
+            ]
+            
+            emp_table = Table(emp_data, colWidths=[2*inch, 3*inch])
+            emp_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 11),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ]))
+            
+            elements.append(emp_table)
+            elements.append(Spacer(1, 20))
+            
+            # Earnings
+            earnings_heading = Paragraph("Earnings", heading_style)
+            elements.append(earnings_heading)
+            
+            earnings_data = [
+                ['Component', 'Amount'],
+                ['Basic Pay', f'₹{self.salary.basic_pay:,.2f}'],
+                ['HRA', f'₹{self.salary.hra:,.2f}'],
+                ['Variable Pay', f'₹{self.salary.variable_pay:,.2f}'],
+                ['Special Allowance', f'₹{self.salary.special_allowance:,.2f}'],
+                ['Other Allowances', f'₹{self.salary.other_allowances:,.2f}'],
+                ['GROSS SALARY', f'₹{self.salary.gross_salary:,.2f}']
+            ]
+            
+            earnings_table = Table(earnings_data, colWidths=[2.5*inch, 2.5*inch])
+            earnings_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -2), 10),
+                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, -1), (-1, -1), 11),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E2EFDA')),
+                ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ]))
+            
+            elements.append(earnings_table)
+            elements.append(Spacer(1, 20))
+            
+            # Deductions
+            deductions_heading = Paragraph("Deductions", heading_style)
+            elements.append(deductions_heading)
+            
+            deductions_data = [
+                ['Component', 'Amount'],
+                ['Provident Fund (12%)', f'₹{self.salary.provident_fund:,.2f}'],
+                ['Professional Tax', f'₹{self.salary.professional_tax:,.2f}'],
+                ['Income Tax', f'₹{self.salary.income_tax:,.2f}'],
+                ['Other Deductions', f'₹{self.salary.other_deductions:,.2f}'],
+                ['TOTAL DEDUCTIONS', f'₹{self.salary.total_deductions:,.2f}']
+            ]
+            
+            deductions_table = Table(deductions_data, colWidths=[2.5*inch, 2.5*inch])
+            deductions_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -2), 10),
+                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, -1), (-1, -1), 11),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FCE4D6')),
+                ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ]))
+            
+            elements.append(deductions_table)
+            elements.append(Spacer(1, 30))
+            
+            # Net Salary (Highlighted)
+            net_salary_text = f"<b>NET SALARY: ₹{self.salary.net_salary:,.2f}</b>"
+            net_style = ParagraphStyle(
+                'NetSalary',
+                parent=styles['Normal'],
+                fontSize=16,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor('#70AD47'),
+                borderColor=colors.HexColor('#70AD47'),
+                borderWidth=2,
+                borderPadding=15,
+                spaceAfter=20
+            )
+            
+            net_paragraph = Paragraph(net_salary_text, net_style)
+            elements.append(net_paragraph)
+            
+            # Footer with generation info
+            footer_text = f"Generated on: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}"
+            footer_style = ParagraphStyle(
+                'Footer',
+                parent=styles['Normal'],
+                fontSize=8,
+                alignment=TA_CENTER,
+                textColor=colors.grey
+            )
+            footer = Paragraph(footer_text, footer_style)
+            elements.append(footer)
+            
+            # Build PDF
+            doc.build(elements)
+            
+            # Get PDF content
+            pdf_buffer.seek(0)
+            pdf_content = pdf_buffer.read()
+            
+            filename = f"{self.employee.name.replace(' ', '_')}_payroll_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            content_type = 'application/pdf'
+            
+            return pdf_content, filename, content_type
+            
+        except Exception as e:
+            raise Exception(f"Error generating PDF report: {str(e)}")
