@@ -97,14 +97,15 @@ class ExcelProcessor:
                     department = str(row[col_map['department']]).strip() if row[col_map.get('department')] and row[col_map.get('department')] else None
                     designation = str(row[col_map['designation']]).strip() if row[col_map.get('designation')] and row[col_map.get('designation')] else None
                     
-                    # Create employee
-                    employee = Employee.objects.create(
-                        upload=self.upload_instance,
+                    # Create or get employee (Employee model doesn't have upload field)
+                    employee, created = Employee.objects.get_or_create(
                         employee_id=employee_id,
-                        name=name,
-                        email=email,
-                        department=department,
-                        designation=designation
+                        defaults={
+                            'name': name,
+                            'email': email,
+                            'department': department,
+                            'designation': designation
+                        }
                     )
                     
                     # Extract salary components
