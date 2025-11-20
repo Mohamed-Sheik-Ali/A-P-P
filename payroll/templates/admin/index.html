@@ -39,24 +39,86 @@
         
         .quick-actions {
             margin-top: 20px;
+            text-align: center;
         }
         .action-button {
             display: inline-block;
-            padding: 10px 20px;
-            margin-right: 10px;
+            padding: 15px 30px;
+            margin: 10px;
             background: #007cba;
             color: white;
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: 6px;
             font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
         }
         .action-button:hover {
             background: #005a82;
             color: white;
+            text-decoration: none;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .action-button.primary {
+            background: #28a745;
+            font-size: 18px;
+            padding: 18px 35px;
+        }
+        .action-button.primary:hover {
+            background: #218838;
+        }
+        .pending-users-button {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 20px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .pending-users-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        .pending-users-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        .pending-users-button:hover::before {
+            left: 100%;
+        }
+        .button-icon {
+            margin-right: 10px;
+            font-size: 20px;
         }
     </style>
     
     <div class="approval-dashboard">
+        <div class="quick-actions">
+            <a href="/api/admin-panel/pending-users/" class="pending-users-button">
+                <span class="button-icon">👥</span>
+                Review Pending Users
+                <span id="pending-badge" style="margin-left: 10px; background: rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 15px; font-size: 14px;">-</span>
+            </a>
+        </div>
+        
         <div class="approval-stats">
             <div class="stat-box">
                 <div class="stat-number pending-stat" id="pending-count">-</div>
@@ -73,11 +135,11 @@
         </div>
         
         <div class="quick-actions">
-            <a href="/api/admin-panel/pending-users/" class="action-button">
-                🔍 Review Pending Users
-            </a>
             <a href="{% url 'admin:payroll_userprofile_changelist' %}" class="action-button">
-                👥 Manage All Users
+                � Manage All Users
+            </a>
+            <a href="{% url 'admin:payroll_payrollupload_changelist' %}" class="action-button">
+                � View Payroll Uploads
             </a>
         </div>
     </div>
@@ -91,6 +153,17 @@ fetch('/api/admin/users/stats/')
         document.getElementById('pending-count').textContent = data.pending_users || 0;
         document.getElementById('approved-count').textContent = data.approved_users || 0;
         document.getElementById('rejected-count').textContent = data.rejected_users || 0;
+        
+        // Update the pending badge on the button
+        const pendingBadge = document.getElementById('pending-badge');
+        const pendingCount = data.pending_users || 0;
+        if (pendingCount > 0) {
+            pendingBadge.textContent = pendingCount;
+            pendingBadge.style.display = 'inline-block';
+        } else {
+            pendingBadge.textContent = '0';
+            pendingBadge.style.background = 'rgba(40, 167, 69, 0.8)'; // Green for no pending
+        }
     })
     .catch(error => {
         console.log('Could not load user stats:', error);
