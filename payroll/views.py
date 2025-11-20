@@ -393,13 +393,8 @@ class EmployeeDetailView(APIView):
     
     def get(self, request, employee_id):
         try:
-            # First check if employee exists and user has access through salary components
-            employee = Employee.objects.get(id=employee_id)
-            
-            # Check if user has access to this employee through any upload
-            user_uploads = PayrollUpload.objects.filter(user=request.user).values_list('id', flat=True)
-            if not SalaryComponent.objects.filter(employee=employee, upload_id__in=user_uploads).exists():
-                raise Employee.DoesNotExist
+            # Get employee belonging to the current user
+            employee = Employee.objects.get(id=employee_id, user=request.user)
             
             serializer = EmployeeSerializer(employee)
             
@@ -538,13 +533,8 @@ class DashboardStatsView(APIView):
         failed_uploads = uploads.filter(status='failed').count()
         processing_uploads = uploads.filter(status='processing').count()
         
-        # Get total unique employees across all uploads
-        user_uploads = uploads.values_list('id', flat=True)
-        total_employees = Employee.objects.filter(
-            id__in=SalaryComponent.objects.filter(
-                upload_id__in=user_uploads
-            ).values_list('employee_id', flat=True).distinct()
-        ).count()
+        # Get total unique employees for this user
+        total_employees = Employee.objects.filter(user=user).count()
         
         # Get total reports generated
         total_reports = PayrollReport.objects.filter(upload__user=user).count()
@@ -803,13 +793,8 @@ class EmployeeExportView(APIView):
     
     def post(self, request, employee_id):
         try:
-            # Get employee and verify ownership through salary components
-            employee = Employee.objects.get(id=employee_id)
-            
-            # Check if user has access to this employee through any upload
-            user_uploads = PayrollUpload.objects.filter(user=request.user).values_list('id', flat=True)
-            if not SalaryComponent.objects.filter(employee=employee, upload_id__in=user_uploads).exists():
-                raise Employee.DoesNotExist
+            # Get employee belonging to the current user
+            employee = Employee.objects.get(id=employee_id, user=request.user)
                 
         except Employee.DoesNotExist:
             return Response({

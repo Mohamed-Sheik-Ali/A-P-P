@@ -97,8 +97,9 @@ class ExcelProcessor:
                     department = str(row[col_map['department']]).strip() if row[col_map.get('department')] and row[col_map.get('department')] else None
                     designation = str(row[col_map['designation']]).strip() if row[col_map.get('designation')] and row[col_map.get('designation')] else None
                     
-                    # Create or get employee (Employee model doesn't have upload field)
+                    # Create or get employee (scoped by user)
                     employee, created = Employee.objects.get_or_create(
+                        user=self.upload_instance.user,  # Scope by user
                         employee_id=employee_id,
                         defaults={
                             'name': name,
@@ -107,6 +108,26 @@ class ExcelProcessor:
                             'designation': designation
                         }
                     )
+                    
+                    # If employee exists but data has changed, update it
+                    if not created:
+                        updated = False
+                        if employee.name != name:
+                            employee.name = name
+                            updated = True
+                        if employee.email != email:
+                            employee.email = email
+                            updated = True
+                        if employee.department != department:
+                            employee.department = department
+                            updated = True
+                        if employee.designation != designation:
+                            employee.designation = designation
+                            updated = True
+                        
+                        if updated:
+                            employee.save()
+                            self.warnings.append(f"Row {row_idx}: Updated employee {employee_id} details")
                     
                     # Extract salary components
                     def get_decimal_value(value):
@@ -126,6 +147,7 @@ class ExcelProcessor:
                     # Create salary component
                     salary = SalaryComponent.objects.create(
                         employee=employee,
+                        upload=self.upload_instance,  # Associate with the upload
                         basic_pay=basic_pay,
                         hra=hra,
                         variable_pay=variable_pay,

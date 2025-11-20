@@ -67,9 +67,10 @@ class PayrollUpload(models.Model):
 
 
 class Employee(models.Model):
-    """Model to store unique employee information"""
+    """Model to store employee information scoped by user/organization"""
     
-    employee_id = models.CharField(max_length=50, unique=True)  # Unique across all uploads
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='employees')  # Employee belongs to a user/organization
+    employee_id = models.CharField(max_length=50)  # Not globally unique anymore
     name = models.CharField(max_length=255)
     email = models.EmailField(null=True, blank=True)
     department = models.CharField(max_length=100, null=True, blank=True)
@@ -80,9 +81,10 @@ class Employee(models.Model):
     
     class Meta:
         db_table = 'employees'
+        unique_together = ['user', 'employee_id']  # Unique employee_id per user/organization
     
     def __str__(self):
-        return f"{self.employee_id} - {self.name}"
+        return f"{self.employee_id} - {self.name} ({self.user.username})"
 
 
 class SalaryComponent(models.Model):
