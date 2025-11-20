@@ -51,7 +51,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'payroll.middleware.DisableCSRFMiddleware',  # Custom middleware for API
+    'payroll.middleware.DisableCSRFMiddleware',  # Custom middleware for API - BEFORE CSRF
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

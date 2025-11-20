@@ -7,8 +7,8 @@ class DisableCSRFMiddleware(MiddlewareMixin):
     """
     Disable CSRF protection for API endpoints
     """
-    def process_view(self, request, view_func, view_args, view_kwargs):
+    def process_request(self, request):
         # Disable CSRF for all API endpoints
         if request.path.startswith('/api/'):
-            setattr(view_func, 'csrf_exempt', True)
+            setattr(request, '_dont_enforce_csrf_checks', True)
         return None
