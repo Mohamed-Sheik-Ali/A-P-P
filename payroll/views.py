@@ -23,7 +23,7 @@ from .jwt_utils import generate_jwt_token
 class UserRegistrationView(APIView):
     """
     API endpoint for user registration
-    POST: Register a new user
+    POST: Register a new user (requires admin approval)
     """
     permission_classes = [AllowAny]
     
@@ -35,9 +35,10 @@ class UserRegistrationView(APIView):
             
             return Response({
                 'success': True,
-                'message': 'User registered successfully. Please login to continue.',
+                'message': 'Registration successful! Your account is pending admin approval. You will be able to login once an administrator approves your account.',
                 'data': {
-                    'user': UserSerializer(user).data
+                    'user': UserSerializer(user).data,
+                    'approval_status': 'pending'
                 }
             }, status=status.HTTP_201_CREATED)
         
@@ -51,7 +52,7 @@ class UserRegistrationView(APIView):
 class UserLoginView(APIView):
     """
     API endpoint for user login
-    POST: Login user with credentials
+    POST: Login user with credentials (only approved users)
     """
     permission_classes = [AllowAny]
     
@@ -60,6 +61,19 @@ class UserLoginView(APIView):
         
         if serializer.is_valid():
             user = serializer.validated_data['user']
+            
+            # Check if user is approved
+            if not user.is_superuser and hasattr(user, 'profile'):
+                if not user.profile.is_approved:
+                    status_message = {
+                        'pending': 'Your account is pending admin approval. Please wait for an administrator to approve your account.',
+                        'rejected': 'Your account has been rejected. Please contact support for more information.'
+                    }
+                    return Response({
+                        'success': False,
+                        'message': status_message.get(user.profile.approval_status, 'Account not approved'),
+                        'approval_status': user.profile.approval_status
+                    }, status=status.HTTP_403_FORBIDDEN)
             
             # Generate JWT token
             token = generate_jwt_token(user)
@@ -777,6 +791,36 @@ def api_documentation(request):
                     'description': 'Get report details',
                     'auth_required': True
                 }
+            },
+            'admin': {
+                'user_list': {
+                    'url': '/api/admin/users/',
+                    'method': 'GET',
+                    'description': 'List users for approval (Admin only)',
+                    'auth_required': True,
+                    'admin_required': True
+                },
+                'approve_user': {
+                    'url': '/api/admin/users/{user_id}/approve/',
+                    'method': 'POST',
+                    'description': 'Approve a pending user (Admin only)',
+                    'auth_required': True,
+                    'admin_required': True
+                },
+                'reject_user': {
+                    'url': '/api/admin/users/{user_id}/reject/',
+                    'method': 'POST',
+                    'description': 'Reject a pending user (Admin only)',
+                    'auth_required': True,
+                    'admin_required': True
+                },
+                'user_stats': {
+                    'url': '/api/admin/users/stats/',
+                    'method': 'GET',
+                    'description': 'Get user approval statistics (Admin only)',
+                    'auth_required': True,
+                    'admin_required': True
+                }
             }
         }
     }
@@ -841,3 +885,218 @@ class EmployeeExportView(APIView):
                 'success': False,
                 'message': f'Error generating report: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Admin Views for User Approval Management
+from django.contrib.auth.models import User
+from .models import UserProfile
+
+
+class AdminUserApprovalView(APIView):
+    """
+    API endpoint for admin to manage user approvals
+    GET: List all pending users
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Check if user is admin/superuser
+        if not request.user.is_staff and not request.user.is_superuser:
+            return Response({
+                'success': False,
+                'message': 'Access denied. Admin privileges required.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get filter parameter
+        status_filter = request.query_params.get('status', 'pending')
+        
+        # Filter users based on approval status
+        if status_filter == 'all':
+            profiles = UserProfile.objects.all().select_related('user', 'approved_by')
+        else:
+            profiles = UserProfile.objects.filter(
+                approval_status=status_filter
+            ).select_related('user', 'approved_by')
+        
+        # Serialize user data
+        users_data = []
+        for profile in profiles:
+            user_data = {
+                'id': profile.user.id,
+                'username': profile.user.username,
+                'email': profile.user.email,
+                'first_name': profile.user.first_name,
+                'last_name': profile.user.last_name,
+                'organization_name': profile.organization_name,
+                'approval_status': profile.approval_status,
+                'approved_by': profile.approved_by.username if profile.approved_by else None,
+                'approval_date': profile.approval_date,
+                'rejection_reason': profile.rejection_reason,
+                'date_joined': profile.user.date_joined,
+                'is_active': profile.user.is_active
+            }
+            users_data.append(user_data)
+        
+        return Response({
+            'success': True,
+            'count': len(users_data),
+            'data': users_data
+        }, status=status.HTTP_200_OK)
+
+
+class AdminApproveUserView(APIView):
+    """
+    API endpoint for admin to approve a user
+    POST: Approve a specific user
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, user_id):
+        # Check if user is admin/superuser
+        if not request.user.is_staff and not request.user.is_superuser:
+            return Response({
+                'success': False,
+                'message': 'Access denied. Admin privileges required.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            user = User.objects.get(id=user_id)
+            profile = user.profile
+            
+            if profile.approval_status == 'approved':
+                return Response({
+                    'success': False,
+                    'message': 'User is already approved'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Approve the user
+            profile.approve(request.user)
+            
+            return Response({
+                'success': True,
+                'message': f'User {user.username} has been approved successfully',
+                'data': {
+                    'user_id': user.id,
+                    'username': user.username,
+                    'approval_status': 'approved',
+                    'approved_by': request.user.username,
+                    'approval_date': profile.approval_date
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Error approving user: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AdminRejectUserView(APIView):
+    """
+    API endpoint for admin to reject a user
+    POST: Reject a specific user with reason
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, user_id):
+        # Check if user is admin/superuser
+        if not request.user.is_staff and not request.user.is_superuser:
+            return Response({
+                'success': False,
+                'message': 'Access denied. Admin privileges required.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            user = User.objects.get(id=user_id)
+            profile = user.profile
+            
+            if profile.approval_status == 'rejected':
+                return Response({
+                    'success': False,
+                    'message': 'User is already rejected'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get rejection reason
+            reason = request.data.get('reason', 'No reason provided')
+            
+            # Reject the user
+            profile.reject(request.user, reason)
+            
+            return Response({
+                'success': True,
+                'message': f'User {user.username} has been rejected',
+                'data': {
+                    'user_id': user.id,
+                    'username': user.username,
+                    'approval_status': 'rejected',
+                    'rejected_by': request.user.username,
+                    'approval_date': profile.approval_date,
+                    'rejection_reason': reason
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Error rejecting user: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AdminUserStatsView(APIView):
+    """
+    API endpoint for admin user management statistics
+    GET: Get user approval statistics
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Check if user is admin/superuser
+        if not request.user.is_staff and not request.user.is_superuser:
+            return Response({
+                'success': False,
+                'message': 'Access denied. Admin privileges required.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Calculate statistics
+        total_users = User.objects.count()
+        pending_users = UserProfile.objects.filter(approval_status='pending').count()
+        approved_users = UserProfile.objects.filter(approval_status='approved').count()
+        rejected_users = UserProfile.objects.filter(approval_status='rejected').count()
+        
+        # Get recent registrations (last 10)
+        recent_users = User.objects.order_by('-date_joined')[:10]
+        recent_users_data = []
+        
+        for user in recent_users:
+            if hasattr(user, 'profile'):
+                user_data = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'organization_name': user.profile.organization_name,
+                    'approval_status': user.profile.approval_status,
+                    'date_joined': user.date_joined,
+                    'is_active': user.is_active
+                }
+                recent_users_data.append(user_data)
+        
+        return Response({
+            'success': True,
+            'data': {
+                'total_users': total_users,
+                'pending_approval': pending_users,
+                'approved_users': approved_users,
+                'rejected_users': rejected_users,
+                'recent_registrations': recent_users_data
+            }
+        }, status=status.HTTP_200_OK)

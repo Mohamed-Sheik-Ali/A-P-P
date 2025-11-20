@@ -6,10 +6,32 @@ from django.dispatch import receiver
 
 
 class UserProfile(models.Model):
-    """Extended user profile with organization information"""
+    """Extended user profile with organization information and approval status"""
+    
+    APPROVAL_STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     organization_name = models.CharField(max_length=200, null=True, blank=True)
+    approval_status = models.CharField(
+        max_length=20, 
+        choices=APPROVAL_STATUS_CHOICES, 
+        default='pending',
+        help_text='Admin approval status for this user'
+    )
+    approved_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='approved_users',
+        help_text='Admin who approved this user'
+    )
+    approval_date = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -17,14 +39,51 @@ class UserProfile(models.Model):
         db_table = 'user_profiles'
     
     def __str__(self):
-        return f"{self.user.username} - {self.organization_name or 'No Organization'}"
+        return f"{self.user.username} - {self.organization_name or 'No Organization'} ({self.get_approval_status_display()})"
+    
+    def approve(self, approved_by_user):
+        """Approve the user"""
+        self.approval_status = 'approved'
+        self.approved_by = approved_by_user
+        self.approval_date = timezone.now()
+        self.rejection_reason = None
+        self.user.is_active = True  # Activate the user account
+        self.user.save()
+        self.save()
+    
+    def reject(self, rejected_by_user, reason=None):
+        """Reject the user"""
+        self.approval_status = 'rejected'
+        self.approved_by = rejected_by_user
+        self.approval_date = timezone.now()
+        self.rejection_reason = reason
+        self.user.is_active = False  # Deactivate the user account
+        self.user.save()
+        self.save()
+    
+    @property
+    def is_approved(self):
+        """Check if user is approved"""
+        return self.approval_status == 'approved'
+    
+    @property
+    def is_pending(self):
+        """Check if user is pending approval"""
+        return self.approval_status == 'pending'
 
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     """Create user profile when user is created"""
     if created:
-        UserProfile.objects.create(user=instance)
+        # New users start as inactive and pending approval (except superusers)
+        if not instance.is_superuser:
+            instance.is_active = False
+            instance.save()
+        UserProfile.objects.create(
+            user=instance,
+            approval_status='approved' if instance.is_superuser else 'pending'
+        )
 
 
 @receiver(post_save, sender=User)

@@ -20,7 +20,14 @@ from .views import (
     DashboardStatsView,
     ValidateUploadView,
     api_documentation,
+    
+    # Admin views
+    AdminUserApprovalView,
+    AdminApproveUserView,
+    AdminRejectUserView,
+    AdminUserStatsView,
 )
+from .admin_views import PendingUsersView, quick_approve_user, quick_reject_user
 
 app_name = 'payroll'
 
@@ -52,6 +59,17 @@ urlpatterns = [
     path('uploads/<int:upload_id>/reports/generate/', GenerateReportView.as_view(), name='generate-report'),
     path('reports/', ReportListView.as_view(), name='report-list'),
     path('reports/<int:report_id>/', ReportDetailView.as_view(), name='report-detail'),
+    
+    # Admin endpoints for user approval
+    path('admin/users/', AdminUserApprovalView.as_view(), name='admin-user-list'),
+    path('admin/users/<int:user_id>/approve/', AdminApproveUserView.as_view(), name='admin-approve-user'),
+    path('admin/users/<int:user_id>/reject/', AdminRejectUserView.as_view(), name='admin-reject-user'),
+    path('admin/users/stats/', AdminUserStatsView.as_view(), name='admin-user-stats'),
+    
+    # Custom admin panel views
+    path('admin-panel/pending-users/', PendingUsersView.as_view(), name='admin-pending-users'),
+    path('admin-panel/approve-user/<int:user_id>/', quick_approve_user, name='admin-quick-approve-user'),
+    path('admin-panel/reject-user/<int:user_id>/', quick_reject_user, name='admin-quick-reject-user'),
 
     path('', api_documentation, name='api-docs'),
 ]

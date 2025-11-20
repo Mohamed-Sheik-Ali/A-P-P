@@ -120,10 +120,19 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for user details"""
     
     organization_name = serializers.CharField(source='profile.organization_name', read_only=True)
+    approval_status = serializers.CharField(source='profile.approval_status', read_only=True)
+    approval_status_display = serializers.CharField(source='profile.get_approval_status_display', read_only=True)
+    is_approved = serializers.BooleanField(source='profile.is_approved', read_only=True)
+    approved_by = serializers.CharField(source='profile.approved_by.username', read_only=True)
+    approval_date = serializers.DateTimeField(source='profile.approval_date', read_only=True)
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login', 'organization_name']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login', 
+            'organization_name', 'approval_status', 'approval_status_display', 'is_approved',
+            'approved_by', 'approval_date'
+        ]
         read_only_fields = ['id', 'date_joined', 'last_login']
 
 

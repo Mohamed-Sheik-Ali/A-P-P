@@ -1,0 +1,99 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+{{ block.super }}
+
+<div class="module" style="margin-top: 20px;">
+    <h2>User Approval Management</h2>
+    <p>Manage new user registrations and approval workflow.</p>
+    
+    <style>
+        .approval-dashboard {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .approval-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .pending-stat { color: #ff9500; }
+        .approved-stat { color: #28a745; }
+        .rejected-stat { color: #dc3545; }
+        
+        .quick-actions {
+            margin-top: 20px;
+        }
+        .action-button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: #007cba;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .action-button:hover {
+            background: #005a82;
+            color: white;
+        }
+    </style>
+    
+    <div class="approval-dashboard">
+        <div class="approval-stats">
+            <div class="stat-box">
+                <div class="stat-number pending-stat" id="pending-count">-</div>
+                <div>Pending Approval</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number approved-stat" id="approved-count">-</div>
+                <div>Approved Users</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number rejected-stat" id="rejected-count">-</div>
+                <div>Rejected Users</div>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <a href="/api/admin-panel/pending-users/" class="action-button">
+                🔍 Review Pending Users
+            </a>
+            <a href="{% url 'admin:payroll_userprofile_changelist' %}" class="action-button">
+                👥 Manage All Users
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load approval statistics
+fetch('/api/admin/users/stats/')
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('pending-count').textContent = data.pending_users || 0;
+        document.getElementById('approved-count').textContent = data.approved_users || 0;
+        document.getElementById('rejected-count').textContent = data.rejected_users || 0;
+    })
+    .catch(error => {
+        console.log('Could not load user stats:', error);
+    });
+</script>
+{% endblock %}

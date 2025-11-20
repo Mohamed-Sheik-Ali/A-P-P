@@ -41,6 +41,16 @@ class JWTAuthentication(BaseAuthentication):
             if not user.is_active:
                 raise AuthenticationFailed('User is inactive')
             
+            # Check if user is approved (except for superusers)
+            if not user.is_superuser and hasattr(user, 'profile'):
+                if not user.profile.is_approved:
+                    if user.profile.approval_status == 'pending':
+                        raise AuthenticationFailed('Account pending admin approval')
+                    elif user.profile.approval_status == 'rejected':
+                        raise AuthenticationFailed('Account has been rejected')
+                    else:
+                        raise AuthenticationFailed('Account not approved')
+            
             return (user, token)
             
         except Exception as e:
