@@ -26,32 +26,40 @@ class PayrollUpload(models.Model):
         ordering = ['-upload_date']
         db_table = 'payroll_uploads'
     
+    @property
+    def employees_count(self):
+        """Count of unique employees in this upload"""
+        return self.salary_components.values('employee').distinct().count()
+    
     def __str__(self):
         return f"{self.filename} - {self.status}"
 
 
 class Employee(models.Model):
-    """Model to store employee information"""
+    """Model to store unique employee information"""
     
-    upload = models.ForeignKey(PayrollUpload, on_delete=models.CASCADE, related_name='employees')
-    employee_id = models.CharField(max_length=50)
+    employee_id = models.CharField(max_length=50, unique=True)  # Unique across all uploads
     name = models.CharField(max_length=255)
     email = models.EmailField(null=True, blank=True)
     department = models.CharField(max_length=100, null=True, blank=True)
     designation = models.CharField(max_length=100, null=True, blank=True)
+    date_of_joining = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = 'employees'
-        unique_together = ['upload', 'employee_id']
     
     def __str__(self):
         return f"{self.employee_id} - {self.name}"
 
 
 class SalaryComponent(models.Model):
-    """Model to store salary components for each employee"""
+    """Model to store salary components for each employee per upload/period"""
     
-    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name='salary')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='salary_records')
+    upload = models.ForeignKey(PayrollUpload, on_delete=models.CASCADE, related_name='salary_components', null=True, blank=True)
+    salary_month = models.DateField(null=True, blank=True)  # For which month this salary is for
     
     # Earnings
     basic_pay = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -79,6 +87,7 @@ class SalaryComponent(models.Model):
     
     class Meta:
         db_table = 'salary_components'
+        unique_together = ['employee', 'upload', 'salary_month']  # Prevent duplicate salary for same employee in same upload/month
     
     def calculate_salary(self):
         """Calculate all salary components"""
@@ -132,7 +141,7 @@ class SalaryComponent(models.Model):
         self.save()
     
     def __str__(self):
-        return f"Salary for {self.employee.name}"
+        return f"Salary for {self.employee.name} - {self.salary_month}"
 
 
 class PayrollReport(models.Model):
