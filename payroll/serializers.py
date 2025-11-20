@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import PayrollUpload, Employee, SalaryComponent, PayrollReport
+from .models import PayrollUpload, Employee, SalaryComponent, PayrollReport, UserProfile
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -20,10 +20,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         style={'input_type': 'password'},
         label='Confirm Password'
     )
+    organization_name = serializers.CharField(
+        max_length=200,
+        required=False,
+        allow_blank=True,
+        help_text='Your company/organization name'
+    )
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'password2']
+        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'password2', 'organization_name']
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True},
@@ -51,8 +57,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return value
     
     def create(self, validated_data):
-        """Create new user"""
+        """Create new user with organization profile"""
+        organization_name = validated_data.pop('organization_name', '')
         validated_data.pop('password2')
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -60,6 +68,12 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             last_name=validated_data['last_name'],
             password=validated_data['password']
         )
+        
+        # Update the user profile with organization name
+        if hasattr(user, 'profile'):
+            user.profile.organization_name = organization_name
+            user.profile.save()
+        
         return user
 
 
@@ -105,9 +119,11 @@ class UserLoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for user details"""
     
+    organization_name = serializers.CharField(source='profile.organization_name', read_only=True)
+    
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login', 'organization_name']
         read_only_fields = ['id', 'date_joined', 'last_login']
 
 

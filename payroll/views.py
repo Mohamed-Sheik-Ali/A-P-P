@@ -560,9 +560,19 @@ class DashboardStatsView(APIView):
             total=Sum('net_salary')
         )['total'] or 0
         
+        # Get user organization info
+        organization_name = None
+        if hasattr(user, 'profile'):
+            organization_name = user.profile.organization_name
+
         return Response({
             'success': True,
             'data': {
+                'user': {
+                    'username': user.username,
+                    'email': user.email,
+                    'organization_name': organization_name
+                },
                 'uploads': {
                     'total': total_uploads,
                     'completed': completed_uploads,

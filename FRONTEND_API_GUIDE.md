@@ -98,7 +98,8 @@ class AuthService {
         first_name: userData.firstName,
         last_name: userData.lastName,
         password: userData.password,
-        password2: userData.confirmPassword
+        password2: userData.confirmPassword,
+        organization_name: userData.organizationName  // ✨ New organization field
       });
       
       return { success: true, user: response.data.data.user };
@@ -367,6 +368,228 @@ const LoginForm = () => {
 export default LoginForm;
 ```
 
+### Registration Component with Organization
+```javascript
+// src/components/auth/RegisterForm.jsx
+import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
+const RegisterForm = () => {
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    organizationName: '',  // ✨ New organization field
+    password: '',
+    confirmPassword: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+    // Clear error when user starts typing
+    if (errors[e.target.name]) {
+      setErrors({
+        ...errors,
+        [e.target.name]: ''
+      });
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrors({});
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setErrors({ confirmPassword: 'Passwords do not match' });
+      setLoading(false);
+      return;
+    }
+
+    const result = await register(formData);
+    
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setErrors(result.errors);
+    }
+    
+    setLoading(false);
+  };
+
+  return (
+    <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-center">Create Account</h2>
+      
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">First Name</label>
+            <input
+              type="text"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              className={`w-full p-2 border rounded-md ${
+                errors.first_name ? 'border-red-500' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.first_name && (
+              <p className="text-red-500 text-sm mt-1">{errors.first_name}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              className={`w-full p-2 border rounded-md ${
+                errors.last_name ? 'border-red-500' : 'border-gray-300'
+              }`}
+              required
+            />
+            {errors.last_name && (
+              <p className="text-red-500 text-sm mt-1">{errors.last_name}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Username</label>
+          <input
+            type="text"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            className={`w-full p-2 border rounded-md ${
+              errors.username ? 'border-red-500' : 'border-gray-300'
+            }`}
+            required
+          />
+          {errors.username && (
+            <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className={`w-full p-2 border rounded-md ${
+              errors.email ? 'border-red-500' : 'border-gray-300'
+            }`}
+            required
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+          )}
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">
+            🏢 Organization Name
+          </label>
+          <input
+            type="text"
+            name="organizationName"
+            value={formData.organizationName}
+            onChange={handleChange}
+            placeholder="e.g., Acme Corporation, Tech Solutions Inc."
+            className={`w-full p-2 border rounded-md ${
+              errors.organization_name ? 'border-red-500' : 'border-gray-300'
+            }`}
+            required
+          />
+          {errors.organization_name && (
+            <p className="text-red-500 text-sm mt-1">{errors.organization_name}</p>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            This will be displayed on your dashboard and reports
+          </p>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Password</label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            className={`w-full p-2 border rounded-md ${
+              errors.password ? 'border-red-500' : 'border-gray-300'
+            }`}
+            required
+          />
+          {errors.password && (
+            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+          )}
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2">Confirm Password</label>
+          <input
+            type="password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            className={`w-full p-2 border rounded-md ${
+              errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+            }`}
+            required
+          />
+          {errors.confirmPassword && (
+            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+          )}
+        </div>
+
+        {errors.non_field_errors && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 rounded">
+            {errors.non_field_errors.map((error, index) => (
+              <p key={index} className="text-red-700 text-sm">{error}</p>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:opacity-50"
+        >
+          {loading ? 'Creating Account...' : 'Create Account'}
+        </button>
+      </form>
+      
+      <p className="text-center text-sm text-gray-600 mt-4">
+        Already have an account?{' '}
+        <a href="/login" className="text-blue-500 hover:text-blue-700">
+          Sign in here
+        </a>
+      </p>
+    </div>
+  );
+};
+
+export default RegisterForm;
+```
+
 ---
 
 ## 📊 Dashboard Integration
@@ -460,6 +683,21 @@ const Dashboard = () => {
 
   return (
     <div className="p-6">
+      {/* Organization Header */}
+      {stats.user?.organization_name && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center">
+            <div className="text-2xl mr-3">🏢</div>
+            <div>
+              <h2 className="text-xl font-semibold text-blue-800">
+                {stats.user.organization_name}
+              </h2>
+              <p className="text-blue-600">Welcome back, {stats.user.username}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <h1 className="text-3xl font-bold mb-6">Payroll Dashboard</h1>
       
       {/* Stats Cards */}
