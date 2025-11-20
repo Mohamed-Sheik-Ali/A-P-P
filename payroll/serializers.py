@@ -164,7 +164,7 @@ class SalaryComponentSerializer(serializers.ModelSerializer):
 class EmployeeSerializer(serializers.ModelSerializer):
     """Serializer for employee with salary details"""
     
-    salary = SalaryComponentSerializer(read_only=True)
+    salary = serializers.SerializerMethodField()
     
     class Meta:
         model = Employee
@@ -172,6 +172,23 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'id', 'employee_id', 'name', 'email', 
             'department', 'designation', 'salary'
         ]
+    
+    def get_salary(self, obj):
+        """Get salary component for this employee and upload"""
+        # Get the upload_id from context if available
+        upload_id = self.context.get('upload_id')
+        if upload_id:
+            try:
+                salary_component = SalaryComponent.objects.get(employee=obj, upload_id=upload_id)
+                return SalaryComponentSerializer(salary_component).data
+            except SalaryComponent.DoesNotExist:
+                return None
+        
+        # If no upload context, get the latest salary record
+        latest_salary = obj.salary_records.first()
+        if latest_salary:
+            return SalaryComponentSerializer(latest_salary).data
+        return None
 
 
 class PayrollUploadSerializer(serializers.ModelSerializer):
@@ -190,15 +207,15 @@ class PayrollUploadSerializer(serializers.ModelSerializer):
         read_only_fields = ['status', 'total_employees', 'upload_date', 'processed_date']
     
     def get_employees_count(self, obj):
-        """Get count of employees"""
-        return obj.employees.count()
+        """Get count of unique employees in this upload"""
+        return obj.salary_components.values('employee').distinct().count()
 
 
 class PayrollUploadDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for payroll upload with employees"""
     
     user = UserSerializer(read_only=True)
-    employees = EmployeeSerializer(many=True, read_only=True)
+    employees = serializers.SerializerMethodField()
     
     class Meta:
         model = PayrollUpload
@@ -207,6 +224,18 @@ class PayrollUploadDetailSerializer(serializers.ModelSerializer):
             'total_employees', 'upload_date', 'processed_date', 
             'error_message', 'employees'
         ]
+    
+    def get_employees(self, obj):
+        """Get all employees for this upload with their salary data"""
+        # Get all employees who have salary components in this upload
+        employee_ids = obj.salary_components.values_list('employee_id', flat=True).distinct()
+        employees = Employee.objects.filter(id__in=employee_ids)
+        
+        # Pass upload_id in context for salary lookup
+        context = self.context.copy()
+        context['upload_id'] = obj.id
+        
+        return EmployeeSerializer(employees, many=True, context=context).data
 
 
 class PayrollReportSerializer(serializers.ModelSerializer):

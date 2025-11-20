@@ -363,9 +363,13 @@ class EmployeeListView(APIView):
     def get(self, request, upload_id):
         try:
             upload = PayrollUpload.objects.get(id=upload_id, user=request.user)
-            employees = Employee.objects.filter(upload=upload).select_related('salary')
             
-            serializer = EmployeeSerializer(employees, many=True)
+            # Get employees who have salary components in this upload
+            employee_ids = upload.salary_components.values_list('employee_id', flat=True).distinct()
+            employees = Employee.objects.filter(id__in=employee_ids)
+            
+            # Pass upload_id in context for salary lookup
+            serializer = EmployeeSerializer(employees, many=True, context={'upload_id': upload_id})
             
             return Response({
                 'success': True,
@@ -389,10 +393,13 @@ class EmployeeDetailView(APIView):
     
     def get(self, request, employee_id):
         try:
-            employee = Employee.objects.select_related('salary', 'upload').get(
-                id=employee_id,
-                upload__user=request.user
-            )
+            # First check if employee exists and user has access through salary components
+            employee = Employee.objects.get(id=employee_id)
+            
+            # Check if user has access to this employee through any upload
+            user_uploads = PayrollUpload.objects.filter(user=request.user).values_list('id', flat=True)
+            if not SalaryComponent.objects.filter(employee=employee, upload_id__in=user_uploads).exists():
+                raise Employee.DoesNotExist
             
             serializer = EmployeeSerializer(employee)
             
@@ -781,11 +788,14 @@ class EmployeeExportView(APIView):
     
     def post(self, request, employee_id):
         try:
-            # Get employee and verify ownership
-            employee = Employee.objects.select_related('upload', 'salary').get(
-                id=employee_id,
-                upload__user=request.user
-            )
+            # Get employee and verify ownership through salary components
+            employee = Employee.objects.get(id=employee_id)
+            
+            # Check if user has access to this employee through any upload
+            user_uploads = PayrollUpload.objects.filter(user=request.user).values_list('id', flat=True)
+            if not SalaryComponent.objects.filter(employee=employee, upload_id__in=user_uploads).exists():
+                raise Employee.DoesNotExist
+                
         except Employee.DoesNotExist:
             return Response({
                 'success': False,
