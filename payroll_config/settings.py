@@ -51,8 +51,6 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'payroll.middleware.DisableCSRFMiddleware',  # Custom middleware for API - BEFORE CSRF
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -162,16 +160,6 @@ CORS_ALLOWED_ORIGINS = [
     "https://starfish-app-iv2k8.ondigitalocean.app",  # Your new production domain
 ]
 
-# CSRF trusted origins for local development
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://app-a-p-p-adqaj.ondigitalocean.app",
-    "https://starfish-app-iv2k8.ondigitalocean.app",
-]
-
 # Additional CORS headers for file uploads
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -181,7 +169,6 @@ CORS_ALLOW_HEADERS = [
     'dnt',
     'origin',
     'user-agent',
-    'x-csrftoken',
     'x-requested-with',
 ]
 
@@ -194,11 +181,6 @@ JWT_SECRET_KEY = SECRET_KEY
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_DELTA = timedelta(hours=24)
 
-# Disable CSRF for API endpoints (since we're using JWT)
-CSRF_COOKIE_SECURE = not DEBUG  # Use secure cookies only in production
-CSRF_COOKIE_HTTPONLY = False
-CSRF_USE_SESSIONS = False
-
 # Security Headers for production
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -207,7 +189,3 @@ SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# For production, force HTTPS
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
