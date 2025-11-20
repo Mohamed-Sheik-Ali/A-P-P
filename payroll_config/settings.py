@@ -159,6 +159,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite default port
     "http://127.0.0.1:5173",
     "https://app-a-p-p-adqaj.ondigitalocean.app",  # Your production domain
+    "https://starfish-app-iv2k8.ondigitalocean.app",  # Your new production domain
 ]
 
 # CSRF trusted origins for local development
@@ -168,6 +169,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://app-a-p-p-adqaj.ondigitalocean.app",
+    "https://starfish-app-iv2k8.ondigitalocean.app",
 ]
 
 # Additional CORS headers for file uploads
@@ -193,7 +195,7 @@ JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_DELTA = timedelta(hours=24)
 
 # Disable CSRF for API endpoints (since we're using JWT)
-CSRF_COOKIE_SECURE = True  # Use secure cookies in production
+CSRF_COOKIE_SECURE = not DEBUG  # Use secure cookies only in production
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
 
