@@ -538,8 +538,13 @@ class DashboardStatsView(APIView):
         failed_uploads = uploads.filter(status='failed').count()
         processing_uploads = uploads.filter(status='processing').count()
         
-        # Get total employees processed
-        total_employees = Employee.objects.filter(upload__user=user).count()
+        # Get total unique employees across all uploads
+        user_uploads = uploads.values_list('id', flat=True)
+        total_employees = Employee.objects.filter(
+            id__in=SalaryComponent.objects.filter(
+                upload_id__in=user_uploads
+            ).values_list('employee_id', flat=True).distinct()
+        ).count()
         
         # Get total reports generated
         total_reports = PayrollReport.objects.filter(upload__user=user).count()
@@ -550,7 +555,7 @@ class DashboardStatsView(APIView):
         # Calculate total salary disbursement
         from django.db.models import Sum
         total_disbursement = SalaryComponent.objects.filter(
-            employee__upload__user=user
+            upload__user=user
         ).aggregate(
             total=Sum('net_salary')
         )['total'] or 0

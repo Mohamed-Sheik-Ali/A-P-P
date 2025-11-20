@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
 Database Inspector for Payroll Processor
-This script helps you inspect the data stored in the database
+This scri        if upload_id:
+            # Get employees who have salary components in this upload
+            employee_ids = SalaryComponent.objects.filter(upload_id=upload_id).values_list('employee_id', flat=True).distinct()
+            employees = Employee.objects.filter(id__in=employee_ids).order_by('employee_id')
+            print(f"Employees for Upload ID {upload_id}: {employees.count()}")
+        else:
+            employees = Employee.objects.all().order_by('employee_id')
+            print(f"Total Employees: {employees.count()}")ps you inspect the data stored in the database
 """
 
 import os

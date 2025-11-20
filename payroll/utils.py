@@ -262,9 +262,18 @@ class ReportGenerator:
             sheet.cell(row=summary_row, column=1).font = Font(bold=True, size=12)
             
             # Calculate totals
-            total_gross = sum(e.salary.gross_salary for e in self.employees)
-            total_deductions = sum(e.salary.total_deductions for e in self.employees)
-            total_net = sum(e.salary.net_salary for e in self.employees)
+            total_gross = 0
+            total_deductions = 0
+            total_net = 0
+            
+            for employee in self.employees:
+                try:
+                    salary = SalaryComponent.objects.get(employee=employee, upload_id=self.upload_id)
+                    total_gross += salary.gross_salary
+                    total_deductions += salary.total_deductions
+                    total_net += salary.net_salary
+                except SalaryComponent.DoesNotExist:
+                    continue
             
             summary_data = [
                 ("Total Employees", len(self.employees)),
@@ -462,9 +471,18 @@ class ReportGenerator:
             summary_heading = Paragraph("Summary", title_style)
             elements.append(summary_heading)
             
-            total_gross = sum(e.salary.gross_salary for e in self.employees)
-            total_deductions = sum(e.salary.total_deductions for e in self.employees)
-            total_net = sum(e.salary.net_salary for e in self.employees)
+            total_gross = 0
+            total_deductions = 0
+            total_net = 0
+            
+            for employee in self.employees:
+                try:
+                    salary = SalaryComponent.objects.get(employee=employee, upload_id=self.upload_id)
+                    total_gross += salary.gross_salary
+                    total_deductions += salary.total_deductions
+                    total_net += salary.net_salary
+                except SalaryComponent.DoesNotExist:
+                    continue
             
             summary_data = [
                 ['Metric', 'Value'],
@@ -526,6 +544,13 @@ class IndividualEmployeeReportGenerator:
     def __init__(self, employee, upload_id=None):
         self.employee = employee
         self.upload_id = upload_id
+        
+        # Get upload instance if upload_id is provided
+        if upload_id:
+            self.upload_instance = PayrollUpload.objects.get(id=upload_id)
+        else:
+            self.upload_instance = None
+            
         # Get the latest salary component for this employee
         if upload_id:
             try:
@@ -581,7 +606,7 @@ class IndividualEmployeeReportGenerator:
             employee_info = [
                 ['Employee ID', self.employee.employee_id, 'Name', self.employee.name],
                 ['Department', self.employee.department or 'N/A', 'Designation', self.employee.designation or 'N/A'],
-                ['Email', self.employee.email or 'N/A', 'Upload Date', self.employee.upload.upload_date.strftime('%Y-%m-%d')]
+                ['Email', self.employee.email or 'N/A', 'Upload Date', self.upload_instance.upload_date.strftime('%Y-%m-%d') if self.upload_instance else 'N/A']
             ]
             
             row += 1
@@ -735,7 +760,7 @@ class IndividualEmployeeReportGenerator:
                 ['Department', self.employee.department or 'N/A'],
                 ['Designation', self.employee.designation or 'N/A'],
                 ['Email', self.employee.email or 'N/A'],
-                ['Pay Period', self.employee.upload.upload_date.strftime('%B %Y')]
+                ['Pay Period', self.upload_instance.upload_date.strftime('%B %Y') if self.upload_instance else 'N/A']
             ]
             
             emp_table = Table(emp_data, colWidths=[2*inch, 3*inch])
