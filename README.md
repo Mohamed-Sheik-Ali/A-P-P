@@ -261,12 +261,27 @@ python manage.py test
 
 ## 📚 API Documentation
 
-Detailed API documentation with request/response examples is available in [`API_PAYLOADS.md`](API_PAYLOADS.md).
+### 📖 Available Documentation
 
-You can also access interactive API documentation at:
-```
-GET http://127.0.0.1:8000/api/docs/
-```
+1. **Detailed API Payloads**: Request/response examples in [`API_PAYLOADS.md`](API_PAYLOADS.md)
+
+2. **Interactive API Docs**: Built-in documentation interface
+   ```
+   GET http://127.0.0.1:8000/api/docs/
+   ```
+
+3. **🚀 Postman Collection**: Complete API collection with examples
+   ```
+   https://documenter.getpostman.com/view/31932375/2sB3WyKH17
+   ```
+   
+   **Features of Postman Collection:**
+   - ✅ All endpoints with sample requests
+   - ✅ Authentication examples
+   - ✅ File upload workflows
+   - ✅ Error handling scenarios
+   - ✅ Environment variables setup
+   - ✅ Test scripts for automation
 
 ## 🤝 Contributing
 
