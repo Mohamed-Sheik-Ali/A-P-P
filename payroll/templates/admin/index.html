@@ -1,4 +1,4 @@
-{% extends "admin/index.html" %}
+{% extends "admin/base_site.html" %}
 {% load i18n %}
 
 {% block content %}
@@ -147,7 +147,7 @@
 
 <script>
 // Load approval statistics
-fetch('/api/admin/users/stats/')
+fetch('/api/admin/users/stats/', { credentials: 'same-origin' })
     .then(response => response.json())
     .then(data => {
         document.getElementById('pending-count').textContent = data.pending_users || 0;
