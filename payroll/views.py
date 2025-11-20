@@ -812,8 +812,17 @@ class EmployeeExportView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
+            # Get the most recent upload for this employee that the user has access to
+            user_uploads = PayrollUpload.objects.filter(user=request.user).values_list('id', flat=True)
+            latest_salary = SalaryComponent.objects.filter(
+                employee=employee, 
+                upload_id__in=user_uploads
+            ).order_by('-upload__upload_date').first()
+            
+            upload_id = latest_salary.upload_id if latest_salary else None
+            
             # Generate individual employee report
-            generator = IndividualEmployeeReportGenerator(employee)
+            generator = IndividualEmployeeReportGenerator(employee, upload_id)
             
             if report_type == 'excel':
                 file_content, filename, content_type = generator.generate_excel_report()

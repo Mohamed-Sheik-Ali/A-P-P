@@ -162,7 +162,10 @@ class ReportGenerator:
     
     def __init__(self, upload_instance):
         self.upload_instance = upload_instance
-        self.employees = Employee.objects.filter(upload=upload_instance).select_related('salary')
+        # Get employees who have salary components in this upload
+        employee_ids = upload_instance.salary_components.values_list('employee_id', flat=True).distinct()
+        self.employees = Employee.objects.filter(id__in=employee_ids)
+        self.upload_id = upload_instance.id
     
     def generate_excel_report(self):
         """Generate Excel report"""
@@ -201,7 +204,11 @@ class ReportGenerator:
             
             # Write data
             for row_idx, employee in enumerate(self.employees, start=2):
-                salary = employee.salary
+                # Get salary component for this employee and upload
+                try:
+                    salary = SalaryComponent.objects.get(employee=employee, upload_id=self.upload_id)
+                except SalaryComponent.DoesNotExist:
+                    continue  # Skip employees without salary data
                 
                 data = [
                     employee.employee_id,
@@ -361,7 +368,11 @@ class ReportGenerator:
             
             # Employee details
             for employee in self.employees:
-                salary = employee.salary
+                # Get salary component for this employee and upload
+                try:
+                    salary = SalaryComponent.objects.get(employee=employee, upload_id=self.upload_id)
+                except SalaryComponent.DoesNotExist:
+                    continue  # Skip employees without salary data
                 
                 # Employee header
                 emp_heading = Paragraph(f"{employee.name} ({employee.employee_id})", heading_style)
@@ -512,9 +523,22 @@ class ReportGenerator:
 class IndividualEmployeeReportGenerator:
     """Class to generate individual employee reports"""
     
-    def __init__(self, employee):
+    def __init__(self, employee, upload_id=None):
         self.employee = employee
-        self.salary = employee.salary
+        self.upload_id = upload_id
+        # Get the latest salary component for this employee
+        if upload_id:
+            try:
+                self.salary = SalaryComponent.objects.get(employee=employee, upload_id=upload_id)
+            except SalaryComponent.DoesNotExist:
+                # Fall back to latest salary record
+                self.salary = employee.salary_records.first()
+        else:
+            # Get latest salary record
+            self.salary = employee.salary_records.first()
+        
+        if not self.salary:
+            raise ValueError(f"No salary data found for employee {employee.name}")
     
     def generate_excel_report(self):
         """Generate Excel report for individual employee"""
