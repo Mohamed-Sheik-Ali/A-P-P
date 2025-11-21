@@ -73,6 +73,29 @@ python manage.py runserver
 
 The application will be available at `http://127.0.0.1:8000/`
 
+### Admin Access (development only)
+
+For local development and testing the admin interface a convenience admin account has been added to the README.
+
+- Username: `AdminPay`
+- Password: `Admin123@`
+
+Warning: These credentials are intended for local/dev testing only. Do NOT use these credentials in production, and rotate or remove them before deploying to any public environment.
+
+Admin dashboard changes
+
+- The Django admin index includes a new "User Approval Management" panel with a prominent "Review Pending Users" button and live counts for pending/approved/rejected users.
+- The admin template was updated to extend `admin/base_site.html` and the client-side stats fetch to `/api/admin/users/stats/` now sends session credentials so the admin UI uses Django session authentication.
+
+Quick verification
+
+1. Restart the Django development server:
+   ```bash
+   python manage.py runserver
+   ```
+2. Open `http://127.0.0.1:8000/admin/` and sign in with the admin credentials above.
+3. If the panel doesn't appear, clear browser cache or open an incognito window and reload the admin page. Check DevTools → Network for a GET to `/api/admin/users/stats/` returning 200 and JSON containing `pending_users`, `approved_users`, and `rejected_users`.
+
 ## 📊 Excel File Format
 
 Your Excel file should contain the following columns:
@@ -187,33 +210,6 @@ Net Salary = Gross Salary - (PF + Professional Tax + Income Tax + Other Deductio
 - SQL injection prevention through Django ORM
 - XSS protection via Django's built-in security
 
-## 🚀 Production Deployment
-
-### Environment Variables
-Create a `.env` file with:
-```env
-DEBUG=False
-SECRET_KEY=your-secret-key-here
-ALLOWED_HOSTS=your-domain.com
-DATABASE_URL=your-database-url
-```
-
-### Using Heroku
-The project includes `Procfile` and `runtime.txt` for easy Heroku deployment:
-```bash
-git push heroku main
-heroku run python manage.py migrate
-```
-
-### Using Docker
-```dockerfile
-FROM python:3.11
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["gunicorn", "payroll_config.wsgi:application"]
-```
 
 ## 📁 Project Structure
 
@@ -309,19 +305,6 @@ For support, email support@example.com or open an issue in the GitHub repository
 - ✅ RESTful API with comprehensive documentation
 - ✅ Dashboard with analytics
 - ✅ Production-ready deployment configuration
-
-## 🔮 Future Enhancements
-
-- [ ] Multiple tax slab configurations
-- [ ] Email integration for report distribution
-- [ ] Bulk employee management
-- [ ] Advanced reporting with charts
-- [ ] Integration with accounting software
-- [ ] Mobile app support
-- [ ] Real-time notifications
-- [ ] Audit logging
-- [ ] Data export in multiple formats
-- [ ] Advanced user roles and permissions
 
 ---
 
