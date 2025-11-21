@@ -265,17 +265,85 @@ class PayrollUploadDetailSerializer(serializers.ModelSerializer):
 
 class PayrollReportSerializer(serializers.ModelSerializer):
     """Serializer for payroll reports"""
-    
+
     upload = PayrollUploadSerializer(read_only=True)
     file_size_kb = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = PayrollReport
         fields = [
-            'id', 'upload', 'report_type', 'file', 
+            'id', 'upload', 'report_type', 'file',
             'generated_date', 'file_size', 'file_size_kb'
         ]
-    
+
     def get_file_size_kb(self, obj):
         """Convert file size to KB"""
         return round(obj.file_size / 1024, 2)
+
+
+class ForgotPasswordRequestSerializer(serializers.Serializer):
+    """Serializer for forgot password request"""
+
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        """Validate that email exists"""
+        try:
+            user = User.objects.get(email=value)
+
+            # Check if user is active
+            if not user.is_active:
+                raise serializers.ValidationError(
+                    "Your account is not active. Please contact support."
+                )
+
+            # Check if user has profile and is approved (skip for superusers)
+            if not user.is_superuser:
+                if not hasattr(user, 'profile'):
+                    raise serializers.ValidationError(
+                        "Account profile not found. Please contact support."
+                    )
+
+                if not user.profile.is_approved:
+                    status_messages = {
+                        'pending': 'Your account is pending admin approval. Please wait for approval before resetting password.',
+                        'rejected': 'Your account has been rejected. Please contact support.'
+                    }
+                    message = status_messages.get(
+                        user.profile.approval_status,
+                        'Your account is not approved. Please contact support.'
+                    )
+                    raise serializers.ValidationError(message)
+
+            return value
+
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                "No account found with this email address."
+            )
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    """Serializer for password reset with token"""
+
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        validators=[validate_password],
+        style={'input_type': 'password'}
+    )
+    new_password2 = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'},
+        label='Confirm New Password'
+    )
+
+    def validate(self, attrs):
+        """Validate that passwords match"""
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({
+                "new_password": "Password fields didn't match."
+            })
+        return attrs

@@ -7,7 +7,9 @@ from .views import (
     UserProfileView,
     ChangePasswordView,
     CheckAuthView,
-    
+    ForgotPasswordRequestView,
+    ResetPasswordView,
+
     # Payroll views
     PayrollUploadView,
     PayrollUploadDetailView,
@@ -20,7 +22,7 @@ from .views import (
     DashboardStatsView,
     ValidateUploadView,
     api_documentation,
-    
+
     # Admin views
     AdminUserApprovalView,
     AdminApproveUserView,
@@ -37,7 +39,9 @@ urlpatterns = [
     path('auth/login/', UserLoginView.as_view(), name='login'),
     path('auth/logout/', UserLogoutView.as_view(), name='logout'),
     path('auth/check/', CheckAuthView.as_view(), name='check-auth'),
-    
+    path('auth/forgot-password/', ForgotPasswordRequestView.as_view(), name='forgot-password'),
+    path('auth/reset-password/', ResetPasswordView.as_view(), name='reset-password'),
+
     # User profile endpoints
     path('user/profile/', UserProfileView.as_view(), name='user-profile'),
     path('user/change-password/', ChangePasswordView.as_view(), name='change-password'),

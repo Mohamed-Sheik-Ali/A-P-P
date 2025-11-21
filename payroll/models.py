@@ -238,21 +238,79 @@ class SalaryComponent(models.Model):
 
 class PayrollReport(models.Model):
     """Model to track generated reports"""
-    
+
     REPORT_TYPE_CHOICES = [
         ('excel', 'Excel'),
         ('pdf', 'PDF'),
     ]
-    
+
     upload = models.ForeignKey(PayrollUpload, on_delete=models.CASCADE, related_name='reports')
     report_type = models.CharField(max_length=10, choices=REPORT_TYPE_CHOICES)
     file = models.FileField(upload_to='reports/%Y/%m/%d/')
     generated_date = models.DateTimeField(default=timezone.now)
     file_size = models.IntegerField(default=0)  # in bytes
-    
+
     class Meta:
         db_table = 'payroll_reports'
         ordering = ['-generated_date']
-    
+
     def __str__(self):
         return f"{self.report_type} report for {self.upload.filename}"
+
+
+class PasswordResetToken(models.Model):
+    """Model to store password reset tokens"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_tokens')
+    token = models.CharField(max_length=100, unique=True, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'password_reset_tokens'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Reset token for {self.user.username} - {'Used' if self.is_used else 'Active'}"
+
+    def is_valid(self):
+        """Check if token is still valid"""
+        if self.is_used:
+            return False
+        if timezone.now() > self.expires_at:
+            return False
+        return True
+
+    def mark_as_used(self):
+        """Mark token as used"""
+        self.is_used = True
+        self.used_at = timezone.now()
+        self.save()
+
+    @classmethod
+    def create_token(cls, user, ip_address=None):
+        """Create a new reset token for user"""
+        import secrets
+        from datetime import timedelta
+
+        # Generate a secure random token
+        token = secrets.token_urlsafe(32)
+
+        # Set expiration to 15 minutes from now
+        expires_at = timezone.now() + timedelta(minutes=15)
+
+        # Invalidate any previous unused tokens for this user
+        cls.objects.filter(user=user, is_used=False).update(is_used=True, used_at=timezone.now())
+
+        # Create new token
+        reset_token = cls.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at,
+            ip_address=ip_address
+        )
+
+        return reset_token

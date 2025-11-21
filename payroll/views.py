@@ -15,7 +15,9 @@ from .serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
     UserSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    ForgotPasswordRequestSerializer,
+    ResetPasswordSerializer
 )
 from .jwt_utils import generate_jwt_token
 
@@ -1058,7 +1060,7 @@ class AdminUserStatsView(APIView):
     GET: Get user approval statistics
     """
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         # Check if user is admin/superuser
         if not request.user.is_staff and not request.user.is_superuser:
@@ -1066,17 +1068,17 @@ class AdminUserStatsView(APIView):
                 'success': False,
                 'message': 'Access denied. Admin privileges required.'
             }, status=status.HTTP_403_FORBIDDEN)
-        
+
         # Calculate statistics
         total_users = User.objects.count()
         pending_users = UserProfile.objects.filter(approval_status='pending').count()
         approved_users = UserProfile.objects.filter(approval_status='approved').count()
         rejected_users = UserProfile.objects.filter(approval_status='rejected').count()
-        
+
         # Get recent registrations (last 10)
         recent_users = User.objects.order_by('-date_joined')[:10]
         recent_users_data = []
-        
+
         for user in recent_users:
             if hasattr(user, 'profile'):
                 user_data = {
@@ -1089,7 +1091,7 @@ class AdminUserStatsView(APIView):
                     'is_active': user.is_active
                 }
                 recent_users_data.append(user_data)
-        
+
         return Response({
             'success': True,
             'data': {
@@ -1100,3 +1102,111 @@ class AdminUserStatsView(APIView):
                 'recent_registrations': recent_users_data
             }
         }, status=status.HTTP_200_OK)
+
+
+# Forgot Password Views
+from .models import PasswordResetToken
+
+
+class ForgotPasswordRequestView(APIView):
+    """
+    API endpoint to request password reset
+    POST: Validates email, checks user approval status, generates reset token
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordRequestSerializer(data=request.data)
+
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = User.objects.get(email=email)
+
+            # Get client IP address
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip_address = x_forwarded_for.split(',')[0]
+            else:
+                ip_address = request.META.get('REMOTE_ADDR')
+
+            # Create reset token
+            reset_token = PasswordResetToken.create_token(user, ip_address)
+
+            return Response({
+                'success': True,
+                'message': 'Password reset token generated successfully. Use this token to reset your password within 15 minutes.',
+                'data': {
+                    'token': reset_token.token,
+                    'expires_at': reset_token.expires_at,
+                    'username': user.username
+                }
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': False,
+            'message': 'Password reset request failed',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordView(APIView):
+    """
+    API endpoint to reset password using token
+    POST: Validates token and resets password
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+
+        if serializer.is_valid():
+            token = serializer.validated_data['token']
+            new_password = serializer.validated_data['new_password']
+
+            try:
+                # Get reset token
+                reset_token = PasswordResetToken.objects.get(token=token)
+
+                # Validate token
+                if not reset_token.is_valid():
+                    if reset_token.is_used:
+                        message = 'This reset token has already been used. Please request a new password reset.'
+                    else:
+                        message = 'This reset token has expired. Please request a new password reset.'
+
+                    return Response({
+                        'success': False,
+                        'message': message
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Get user and reset password
+                user = reset_token.user
+                user.set_password(new_password)
+                user.save()
+
+                # Mark token as used
+                reset_token.mark_as_used()
+
+                # Generate new JWT token for automatic login
+                jwt_token = generate_jwt_token(user)
+
+                return Response({
+                    'success': True,
+                    'message': 'Password has been reset successfully. You can now login with your new password.',
+                    'data': {
+                        'username': user.username,
+                        'token': jwt_token
+                    }
+                }, status=status.HTTP_200_OK)
+
+            except PasswordResetToken.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'message': 'Invalid reset token. Please request a new password reset.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'success': False,
+            'message': 'Password reset failed',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
