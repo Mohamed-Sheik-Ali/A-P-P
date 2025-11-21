@@ -13,12 +13,13 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-*j$bk*a==au46vl(r=(05
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['starfish-app-iv2k8.ondigitalocean.app', 'localhost', '127.0.0.1', 'app-a-p-p-adqaj.ondigitalocean.app']
+ALLOWED_HOSTS = ['starfish-app-iv2k8.ondigitalocean.app', 'localhost', '127.0.0.1', 'app-a-p-p-adqaj.ondigitalocean.app', 'payorbit.netlify.app']
 
 # CRITICAL: Add CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = [
     'https://starfish-app-iv2k8.ondigitalocean.app',
     'https://app-a-p-p-adqaj.ondigitalocean.app',
+    'https://payorbit.netlify.app',
 ]
 
 INSTALLED_APPS = [
