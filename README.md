@@ -20,6 +20,7 @@ A comprehensive Django REST API application for automating payroll processing fr
 - ✅ **Error Handling**: Comprehensive error reporting and warnings
 - ✅ **Dashboard Analytics**: Real-time statistics and insights
 - ✅ **RESTful API**: Complete REST API with detailed documentation
+- ✅ **Password Recovery**: Secure token-based password reset without email service
 
 ## 🛠️ Technology Stack
 
@@ -129,6 +130,8 @@ EMP002      | Jane Smith    | jane@company.com   | Marketing   | 45000     | 180
 - `POST /api/auth/login/` - User login
 - `POST /api/auth/logout/` - User logout
 - `GET /api/auth/check/` - Check authentication status
+- `POST /api/auth/forgot-password/` - Request password reset token
+- `POST /api/auth/reset-password/` - Reset password with token
 
 ### User Profile
 - `GET /api/user/profile/` - Get user profile
@@ -205,10 +208,13 @@ Net Salary = Gross Salary - (PF + Professional Tax + Income Tax + Other Deductio
 
 - JWT-based authentication
 - User-specific data isolation
+- Secure password reset with cryptographically secure tokens (15-minute expiry)
+- Token-based password recovery without email dependency
 - File upload validation and size limits
 - CORS protection
 - SQL injection prevention through Django ORM
 - XSS protection via Django's built-in security
+- Admin approval system for new user registrations
 
 
 ## 📁 Project Structure
@@ -261,12 +267,14 @@ python manage.py test
 
 1. **Detailed API Payloads**: Request/response examples in [`API_PAYLOADS.md`](API_PAYLOADS.md)
 
-2. **Interactive API Docs**: Built-in documentation interface
+2. **Forgot Password Flow**: Complete password reset implementation guide in [`FORGOT_PASSWORD_API.md`](FORGOT_PASSWORD_API.md)
+
+3. **Interactive API Docs**: Built-in documentation interface
    ```
    GET http://127.0.0.1:8000/api/docs/
    ```
 
-3. **🚀 Postman Collection**: Complete API collection with examples
+4. **🚀 Postman Collection**: Complete API collection with examples
    ```
    https://documenter.getpostman.com/view/31932375/2sB3WyKH17
    ```
@@ -302,6 +310,8 @@ For support, email support@example.com or open an issue in the GitHub repository
 - ✅ Salary calculations with tax computation
 - ✅ Report generation (Excel/PDF)
 - ✅ User authentication and authorization
+- ✅ Secure password reset without email service
+- ✅ Admin approval system for new users
 - ✅ RESTful API with comprehensive documentation
 - ✅ Dashboard with analytics
 - ✅ Production-ready deployment configuration
