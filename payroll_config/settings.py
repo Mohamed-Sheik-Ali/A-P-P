@@ -120,6 +120,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "https://app-a-p-p-adqaj.ondigitalocean.app",
     "https://starfish-app-iv2k8.ondigitalocean.app",
+    "https://payorbit.netlify.app",
 ]
 
 CORS_ALLOW_HEADERS = [
