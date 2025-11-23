@@ -217,24 +217,28 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 
 class PayrollUploadSerializer(serializers.ModelSerializer):
-    """Serializer for payroll upload"""
-    
     user = UserSerializer(read_only=True)
-    employees_count = serializers.SerializerMethodField()
+    employees_count = serializers.IntegerField(read_only=True)
+    total_amount_processed = serializers.SerializerMethodField()
     
     class Meta:
         model = PayrollUpload
         fields = [
             'id', 'user', 'file', 'filename', 'status', 
-            'total_employees', 'employees_count', 'upload_date', 
-            'processed_date', 'error_message'
+            'total_employees', 'employees_count', 'total_amount_processed',
+            'upload_date', 'processed_date', 'error_message'
         ]
-        read_only_fields = ['status', 'total_employees', 'upload_date', 'processed_date']
     
-    def get_employees_count(self, obj):
-        """Get count of unique employees in this upload"""
-        return obj.salary_components.values('employee').distinct().count()
-
+    def get_total_amount_processed(self, obj):
+        """Calculate total net salary for all employees in this upload"""
+        from django.db.models import Sum
+        from decimal import Decimal
+        
+        total = obj.salary_components.aggregate(
+            total=Sum('net_salary')
+        )['total']
+        
+        return float(total) if total else 0.0
 
 class PayrollUploadDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for payroll upload with employees"""
