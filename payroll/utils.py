@@ -10,6 +10,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import os
 
 from .models import PayrollUpload, Employee, SalaryComponent, PayrollReport
@@ -261,7 +263,7 @@ class ReportGenerator:
                     
                     # Format currency columns
                     if col_idx >= 6:
-                        cell.number_format = '₹#,##0.00'
+                        cell.number_format = '"Rs. "#,##0.00'
                         cell.alignment = Alignment(horizontal='right')
                     else:
                         cell.alignment = Alignment(horizontal='left')
@@ -311,7 +313,7 @@ class ReportGenerator:
                 cell = sheet.cell(row=summary_row + idx, column=2)
                 cell.value = value
                 if isinstance(value, (int, float)) and label != "Total Employees":
-                    cell.number_format = '₹#,##0.00'
+                    cell.number_format = '"Rs. "#,##0.00'
             
             # Save to BytesIO
             excel_file = BytesIO()
@@ -337,6 +339,20 @@ class ReportGenerator:
     def generate_pdf_report(self):
         """Generate PDF report"""
         try:
+            # Register DejaVu Sans font for Unicode support (including Rupee symbol)
+            try:
+                from reportlab.pdfbase.ttfonts import TTFont
+                from reportlab.pdfbase import pdfmetrics
+                # Try to use DejaVuSans if available on the system
+                pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
+                font_name = 'DejaVuSans'
+                font_name_bold = 'DejaVuSans-Bold'
+            except:
+                # Fall back to Helvetica if DejaVu fonts are not available
+                font_name = 'Helvetica'
+                font_name_bold = 'Helvetica-Bold'
+            
             # Create PDF buffer
             pdf_buffer = BytesIO()
             
@@ -361,7 +377,8 @@ class ReportGenerator:
                 fontSize=24,
                 textColor=colors.HexColor('#4472C4'),
                 spaceAfter=30,
-                alignment=TA_CENTER
+                alignment=TA_CENTER,
+                fontName=font_name_bold
             )
             
             heading_style = ParagraphStyle(
@@ -370,7 +387,8 @@ class ReportGenerator:
                 fontSize=14,
                 textColor=colors.HexColor('#4472C4'),
                 spaceAfter=12,
-                spaceBefore=12
+                spaceBefore=12,
+                fontName=font_name_bold
             )
             
             # Title
@@ -387,7 +405,8 @@ class ReportGenerator:
             
             info_table = Table(info_data, colWidths=[2*inch, 4*inch])
             info_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (0, -1), font_name_bold),
+                ('FONTNAME', (1, 0), (1, -1), font_name),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
                 ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#4472C4')),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -422,7 +441,8 @@ class ReportGenerator:
                 if emp_info:
                     emp_info_table = Table(emp_info, colWidths=[1.5*inch, 4*inch])
                     emp_info_table.setStyle(TableStyle([
-                        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                        ('FONTNAME', (0, 0), (0, -1), font_name_bold),
+                        ('FONTNAME', (1, 0), (1, -1), font_name),
                         ('FONTSIZE', (0, 0), (-1, -1), 9),
                         ('TEXTCOLOR', (0, 0), (0, -1), colors.grey),
                         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
@@ -432,22 +452,22 @@ class ReportGenerator:
                 
                 # Salary breakdown
                 salary_data = [
-                    ['Component', 'Amount (₹)'],
-                    ['Basic Pay', f'{salary.basic_pay:,.2f}'],
-                    ['HRA', f'{salary.hra:,.2f}'],
-                    ['Variable Pay', f'{salary.variable_pay:,.2f}'],
-                    ['Special Allowance', f'{salary.special_allowance:,.2f}'],
-                    ['Other Allowances', f'{salary.other_allowances:,.2f}'],
-                    ['Gross Salary', f'{salary.gross_salary:,.2f}'],
+                    ['Component', 'Amount (Rs.)'],
+                    ['Basic Pay', f'Rs. {salary.basic_pay:,.2f}'],
+                    ['HRA', f'Rs. {salary.hra:,.2f}'],
+                    ['Variable Pay', f'Rs. {salary.variable_pay:,.2f}'],
+                    ['Special Allowance', f'Rs. {salary.special_allowance:,.2f}'],
+                    ['Other Allowances', f'Rs. {salary.other_allowances:,.2f}'],
+                    ['Gross Salary', f'Rs. {salary.gross_salary:,.2f}'],
                     ['', ''],
-                    ['Provident Fund', f'{salary.provident_fund:,.2f}'],
-                    ['Professional Tax', f'{salary.professional_tax:,.2f}'],
-                    ['Income Tax', f'{salary.income_tax:,.2f}'],
-                    ['Other Deductions', f'{salary.other_deductions:,.2f}'],
-                    ['Total Deductions', f'{salary.total_deductions:,.2f}'],
+                    ['Provident Fund', f'Rs. {salary.provident_fund:,.2f}'],
+                    ['Professional Tax', f'Rs. {salary.professional_tax:,.2f}'],
+                    ['Income Tax', f'Rs. {salary.income_tax:,.2f}'],
+                    ['Other Deductions', f'Rs. {salary.other_deductions:,.2f}'],
+                    ['Total Deductions', f'Rs. {salary.total_deductions:,.2f}'],
                     ['', ''],
-                    ['Net Salary', f'{salary.net_salary:,.2f}'],
-                    ['Take Home Pay', f'{salary.take_home_pay:,.2f}'],
+                    ['Net Salary', f'Rs. {salary.net_salary:,.2f}'],
+                    ['Take Home Pay', f'Rs. {salary.take_home_pay:,.2f}'],
                 ]
                 
                 salary_table = Table(salary_data, colWidths=[3*inch, 2*inch])
@@ -455,27 +475,27 @@ class ReportGenerator:
                     # Header
                     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTNAME', (0, 0), (-1, 0), font_name_bold),
                     ('FONTSIZE', (0, 0), (-1, 0), 10),
                     ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
                     
                     # Body
-                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTNAME', (0, 1), (-1, -1), font_name),
                     ('FONTSIZE', (0, 1), (-1, -1), 9),
                     ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
                     
                     # Gross salary row
                     ('BACKGROUND', (0, 6), (-1, 6), colors.HexColor('#E7E6E6')),
-                    ('FONTNAME', (0, 6), (-1, 6), 'Helvetica-Bold'),
+                    ('FONTNAME', (0, 6), (-1, 6), font_name_bold),
                     
                     # Total deductions row
                     ('BACKGROUND', (0, 12), (-1, 12), colors.HexColor('#E7E6E6')),
-                    ('FONTNAME', (0, 12), (-1, 12), 'Helvetica-Bold'),
+                    ('FONTNAME', (0, 12), (-1, 12), font_name_bold),
                     
                     # Final rows
                     ('BACKGROUND', (0, 14), (-1, -1), colors.HexColor('#4472C4')),
                     ('TEXTCOLOR', (0, 14), (-1, -1), colors.whitesmoke),
-                    ('FONTNAME', (0, 14), (-1, -1), 'Helvetica-Bold'),
+                    ('FONTNAME', (0, 14), (-1, -1), font_name_bold),
                     ('FONTSIZE', (0, 14), (-1, -1), 10),
                     
                     # Grid
@@ -510,21 +530,21 @@ class ReportGenerator:
             summary_data = [
                 ['Metric', 'Value'],
                 ['Total Employees', str(len(self.employees))],
-                ['Total Gross Salary', f'₹{total_gross:,.2f}'],
-                ['Total Deductions', f'₹{total_deductions:,.2f}'],
-                ['Total Net Salary', f'₹{total_net:,.2f}'],
-                ['Average Gross Salary', f'₹{total_gross/len(self.employees):,.2f}'],
-                ['Average Net Salary', f'₹{total_net/len(self.employees):,.2f}'],
+                ['Total Gross Salary', f'Rs. {total_gross:,.2f}'],
+                ['Total Deductions', f'Rs. {total_deductions:,.2f}'],
+                ['Total Net Salary', f'Rs. {total_net:,.2f}'],
+                ['Average Gross Salary', f'Rs. {total_gross/len(self.employees):,.2f}'],
+                ['Average Net Salary', f'Rs. {total_net/len(self.employees):,.2f}'],
             ]
             
             summary_table = Table(summary_data, colWidths=[3*inch, 3*inch])
             summary_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), font_name_bold),
                 ('FONTSIZE', (0, 0), (-1, 0), 12),
                 ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTNAME', (0, 1), (-1, -1), font_name),
                 ('FONTSIZE', (0, 1), (-1, -1), 11),
                 ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
                 ('GRID', (0, 0), (-1, -1), 1, colors.grey),
@@ -654,12 +674,12 @@ class IndividualEmployeeReportGenerator:
             
             earnings_data = [
                 ['Component', 'Amount', '', ''],
-                ['Basic Pay', f'₹{self.salary.basic_pay:,.2f}', '', ''],
-                ['HRA', f'₹{self.salary.hra:,.2f}', '', ''],
-                ['Variable Pay', f'₹{self.salary.variable_pay:,.2f}', '', ''],
-                ['Special Allowance', f'₹{self.salary.special_allowance:,.2f}', '', ''],
-                ['Other Allowances', f'₹{self.salary.other_allowances:,.2f}', '', ''],
-                ['GROSS SALARY', f'₹{self.salary.gross_salary:,.2f}', '', ''],
+                ['Basic Pay', f'Rs. {self.salary.basic_pay:,.2f}', '', ''],
+                ['HRA', f'Rs. {self.salary.hra:,.2f}', '', ''],
+                ['Variable Pay', f'Rs. {self.salary.variable_pay:,.2f}', '', ''],
+                ['Special Allowance', f'Rs. {self.salary.special_allowance:,.2f}', '', ''],
+                ['Other Allowances', f'Rs. {self.salary.other_allowances:,.2f}', '', ''],
+                ['GROSS SALARY', f'Rs. {self.salary.gross_salary:,.2f}', '', ''],
             ]
             
             row += 1
@@ -687,11 +707,11 @@ class IndividualEmployeeReportGenerator:
             
             deductions_data = [
                 ['Component', 'Amount', '', ''],
-                ['Provident Fund (12%)', f'₹{self.salary.provident_fund:,.2f}', '', ''],
-                ['Professional Tax', f'₹{self.salary.professional_tax:,.2f}', '', ''],
-                ['Income Tax', f'₹{self.salary.income_tax:,.2f}', '', ''],
-                ['Other Deductions', f'₹{self.salary.other_deductions:,.2f}', '', ''],
-                ['TOTAL DEDUCTIONS', f'₹{self.salary.total_deductions:,.2f}', '', ''],
+                ['Provident Fund (12%)', f'Rs. {self.salary.provident_fund:,.2f}', '', ''],
+                ['Professional Tax', f'Rs. {self.salary.professional_tax:,.2f}', '', ''],
+                ['Income Tax', f'Rs. {self.salary.income_tax:,.2f}', '', ''],
+                ['Other Deductions', f'Rs. {self.salary.other_deductions:,.2f}', '', ''],
+                ['TOTAL DEDUCTIONS', f'Rs. {self.salary.total_deductions:,.2f}', '', ''],
             ]
             
             row += 1
@@ -712,7 +732,7 @@ class IndividualEmployeeReportGenerator:
             row += 1
             sheet.merge_cells(f'A{row}:B{row}')
             net_cell = sheet.cell(row=row, column=1)
-            net_cell.value = f"NET SALARY: ₹{self.salary.net_salary:,.2f}"
+            net_cell.value = f"NET SALARY: Rs. {self.salary.net_salary:,.2f}"
             net_cell.fill = PatternFill(start_color="70AD47", end_color="70AD47", fill_type="solid")
             net_cell.font = Font(bold=True, color="FFFFFF", size=14)
             net_cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -741,6 +761,20 @@ class IndividualEmployeeReportGenerator:
     def generate_pdf_report(self):
         """Generate PDF report for individual employee"""
         try:
+            # Register DejaVu Sans font for Unicode support (including Rupee symbol)
+            try:
+                from reportlab.pdfbase.ttfonts import TTFont
+                from reportlab.pdfbase import pdfmetrics
+                # Try to use DejaVuSans if available on the system
+                pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
+                font_name = 'DejaVuSans'
+                font_name_bold = 'DejaVuSans-Bold'
+            except:
+                # Fall back to Helvetica if DejaVu fonts are not available
+                font_name = 'Helvetica'
+                font_name_bold = 'Helvetica-Bold'
+            
             # Create PDF buffer
             pdf_buffer = BytesIO()
             doc = SimpleDocTemplate(pdf_buffer, pagesize=letter, 
@@ -755,7 +789,8 @@ class IndividualEmployeeReportGenerator:
                 fontSize=16,
                 spaceAfter=30,
                 alignment=TA_CENTER,
-                textColor=colors.HexColor('#4472C4')
+                textColor=colors.HexColor('#4472C4'),
+                fontName=font_name_bold
             )
             
             heading_style = ParagraphStyle(
@@ -763,7 +798,8 @@ class IndividualEmployeeReportGenerator:
                 parent=styles['Heading2'],
                 fontSize=12,
                 spaceAfter=12,
-                textColor=colors.HexColor('#2F5597')
+                textColor=colors.HexColor('#2F5597'),
+                fontName=font_name_bold
             )
             
             # Build PDF elements
@@ -788,8 +824,8 @@ class IndividualEmployeeReportGenerator:
             
             emp_table = Table(emp_data, colWidths=[2*inch, 3*inch])
             emp_table.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+                ('FONTNAME', (0, 0), (0, -1), font_name_bold),
+                ('FONTNAME', (1, 0), (1, -1), font_name),
                 ('FONTSIZE', (0, 0), (-1, -1), 11),
                 ('GRID', (0, 0), (-1, -1), 1, colors.grey),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -808,24 +844,24 @@ class IndividualEmployeeReportGenerator:
             
             earnings_data = [
                 ['Component', 'Amount'],
-                ['Basic Pay', f'₹{self.salary.basic_pay:,.2f}'],
-                ['HRA', f'₹{self.salary.hra:,.2f}'],
-                ['Variable Pay', f'₹{self.salary.variable_pay:,.2f}'],
-                ['Special Allowance', f'₹{self.salary.special_allowance:,.2f}'],
-                ['Other Allowances', f'₹{self.salary.other_allowances:,.2f}'],
-                ['GROSS SALARY', f'₹{self.salary.gross_salary:,.2f}']
+                ['Basic Pay', f'Rs. {self.salary.basic_pay:,.2f}'],
+                ['HRA', f'Rs. {self.salary.hra:,.2f}'],
+                ['Variable Pay', f'Rs. {self.salary.variable_pay:,.2f}'],
+                ['Special Allowance', f'Rs. {self.salary.special_allowance:,.2f}'],
+                ['Other Allowances', f'Rs. {self.salary.other_allowances:,.2f}'],
+                ['GROSS SALARY', f'Rs. {self.salary.gross_salary:,.2f}']
             ]
             
             earnings_table = Table(earnings_data, colWidths=[2.5*inch, 2.5*inch])
             earnings_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), font_name_bold),
                 ('FONTSIZE', (0, 0), (-1, 0), 11),
                 ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-                ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+                ('FONTNAME', (0, 1), (-1, -2), font_name),
                 ('FONTSIZE', (0, 1), (-1, -2), 10),
-                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, -1), (-1, -1), font_name_bold),
                 ('FONTSIZE', (0, -1), (-1, -1), 11),
                 ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E2EFDA')),
                 ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
@@ -846,23 +882,23 @@ class IndividualEmployeeReportGenerator:
             
             deductions_data = [
                 ['Component', 'Amount'],
-                ['Provident Fund (12%)', f'₹{self.salary.provident_fund:,.2f}'],
-                ['Professional Tax', f'₹{self.salary.professional_tax:,.2f}'],
-                ['Income Tax', f'₹{self.salary.income_tax:,.2f}'],
-                ['Other Deductions', f'₹{self.salary.other_deductions:,.2f}'],
-                ['TOTAL DEDUCTIONS', f'₹{self.salary.total_deductions:,.2f}']
+                ['Provident Fund (12%)', f'Rs. {self.salary.provident_fund:,.2f}'],
+                ['Professional Tax', f'Rs. {self.salary.professional_tax:,.2f}'],
+                ['Income Tax', f'Rs. {self.salary.income_tax:,.2f}'],
+                ['Other Deductions', f'Rs. {self.salary.other_deductions:,.2f}'],
+                ['TOTAL DEDUCTIONS', f'Rs. {self.salary.total_deductions:,.2f}']
             ]
             
             deductions_table = Table(deductions_data, colWidths=[2.5*inch, 2.5*inch])
             deductions_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4472C4')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), font_name_bold),
                 ('FONTSIZE', (0, 0), (-1, 0), 11),
                 ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-                ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+                ('FONTNAME', (0, 1), (-1, -2), font_name),
                 ('FONTSIZE', (0, 1), (-1, -2), 10),
-                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, -1), (-1, -1), font_name_bold),
                 ('FONTSIZE', (0, -1), (-1, -1), 11),
                 ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#FCE4D6')),
                 ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
@@ -878,7 +914,7 @@ class IndividualEmployeeReportGenerator:
             elements.append(Spacer(1, 30))
             
             # Net Salary (Highlighted)
-            net_salary_text = f"<b>NET SALARY: ₹{self.salary.net_salary:,.2f}</b>"
+            net_salary_text = f"<b>NET SALARY: Rs. {self.salary.net_salary:,.2f}</b>"
             net_style = ParagraphStyle(
                 'NetSalary',
                 parent=styles['Normal'],
@@ -888,7 +924,8 @@ class IndividualEmployeeReportGenerator:
                 borderColor=colors.HexColor('#70AD47'),
                 borderWidth=2,
                 borderPadding=15,
-                spaceAfter=20
+                spaceAfter=20,
+                fontName=font_name_bold
             )
             
             net_paragraph = Paragraph(net_salary_text, net_style)
@@ -901,7 +938,8 @@ class IndividualEmployeeReportGenerator:
                 parent=styles['Normal'],
                 fontSize=8,
                 alignment=TA_CENTER,
-                textColor=colors.grey
+                textColor=colors.grey,
+                fontName=font_name
             )
             footer = Paragraph(footer_text, footer_style)
             elements.append(footer)
