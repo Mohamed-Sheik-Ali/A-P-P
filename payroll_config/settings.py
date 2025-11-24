@@ -108,6 +108,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'payroll.pagination.StandardResultsPagination',
+    'PAGE_SIZE': 20,
 }
 
 # CORS Configuration

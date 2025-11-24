@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.http import HttpResponse
 from django.db import transaction
 from rest_framework.parsers import MultiPartParser, FormParser
+from .pagination import StandardResultsPagination
 import tempfile
 import os
 
@@ -311,15 +312,21 @@ class PayrollUploadView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def get(self, request):
-        """Get all uploads for current user"""
-        uploads = PayrollUpload.objects.filter(user=request.user)
-        serializer = PayrollUploadSerializer(uploads, many=True)
-        
-        return Response({
-            'success': True,
-            'count': uploads.count(),
-            'data': serializer.data
-        }, status=status.HTTP_200_OK)
+        """Get all uploads for current user with pagination"""
+        # Query optimization: select_related to avoid additional queries for user
+        uploads = PayrollUpload.objects.filter(
+            user=request.user
+        ).select_related('user').order_by('-upload_date')
+
+        # Apply pagination
+        paginator = StandardResultsPagination()
+        paginated_uploads = paginator.paginate_queryset(uploads, request)
+
+        # Serialize the paginated data
+        serializer = PayrollUploadSerializer(paginated_uploads, many=True)
+
+        # Return paginated response
+        return paginator.get_paginated_response(serializer.data)
 
 
 class PayrollUploadDetailView(APIView):
@@ -379,20 +386,36 @@ class EmployeeListView(APIView):
     def get(self, request, upload_id):
         try:
             upload = PayrollUpload.objects.get(id=upload_id, user=request.user)
-            
+
+            # Query optimization: Prefetch salary components to avoid N+1 queries
+            from django.db.models import Prefetch
+
             # Get employees who have salary components in this upload
             employee_ids = upload.salary_components.values_list('employee_id', flat=True).distinct()
-            employees = Employee.objects.filter(id__in=employee_ids)
-            
+            employees = Employee.objects.filter(
+                id__in=employee_ids
+            ).prefetch_related(
+                Prefetch(
+                    'salary_records',
+                    queryset=SalaryComponent.objects.filter(upload_id=upload_id),
+                    to_attr='upload_salary'
+                )
+            ).order_by('name')
+
+            # Apply pagination
+            paginator = StandardResultsPagination()
+            paginated_employees = paginator.paginate_queryset(employees, request)
+
             # Pass upload_id in context for salary lookup
-            serializer = EmployeeSerializer(employees, many=True, context={'upload_id': upload_id})
-            
-            return Response({
-                'success': True,
-                'count': employees.count(),
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
-            
+            serializer = EmployeeSerializer(
+                paginated_employees,
+                many=True,
+                context={'upload_id': upload_id}
+            )
+
+            # Return paginated response
+            return paginator.get_paginated_response(serializer.data)
+
         except PayrollUpload.DoesNotExist:
             return Response({
                 'success': False,
