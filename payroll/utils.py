@@ -25,6 +25,9 @@ class ExcelProcessor:
         'employee_id', 'name', 'email', 'department', 'designation',
         'basic_pay', 'hra', 'variable_pay', 'special_allowance', 'other_allowances'
     ]
+
+    # Optional columns that can be included
+    OPTIONAL_COLUMNS = ['other_deductions']
     
     def __init__(self, file_path, upload_instance):
         self.file_path = file_path
@@ -145,7 +148,8 @@ class ExcelProcessor:
                     variable_pay = get_decimal_value(row[col_map['variable_pay']])
                     special_allowance = get_decimal_value(row[col_map.get('special_allowance', 0)])
                     other_allowances = get_decimal_value(row[col_map.get('other_allowances', 0)])
-                    
+                    other_deductions = get_decimal_value(row[col_map.get('other_deductions', 0)])
+
                     # Create salary component
                     salary = SalaryComponent.objects.create(
                         employee=employee,
@@ -154,7 +158,8 @@ class ExcelProcessor:
                         hra=hra,
                         variable_pay=variable_pay,
                         special_allowance=special_allowance,
-                        other_allowances=other_allowances
+                        other_allowances=other_allowances,
+                        other_deductions=other_deductions
                     )
                     
                     # Calculate salary

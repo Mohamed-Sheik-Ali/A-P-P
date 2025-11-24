@@ -16,7 +16,7 @@ class Command(BaseCommand):
         # Headers
         headers = [
             'employee_id', 'name', 'email', 'department', 'designation',
-            'basic_pay', 'hra', 'variable_pay', 'special_allowance', 'other_allowances'
+            'basic_pay', 'hra', 'variable_pay', 'special_allowance', 'other_allowances', 'other_deductions'
         ]
         
         # Style for headers
@@ -31,13 +31,13 @@ class Command(BaseCommand):
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', vertical='center')
         
-        # Sample data
+        # Sample data (added other_deductions column with example values)
         sample_data = [
-            ['EMP001', 'John Doe', 'john.doe@example.com', 'IT', 'Senior Developer', 50000, 10000, 5000, 2000, 1000],
-            ['EMP002', 'Jane Smith', 'jane.smith@example.com', 'HR', 'HR Manager', 60000, 12000, 8000, 3000, 1500],
-            ['EMP003', 'Mike Johnson', 'mike.j@example.com', 'Finance', 'Accountant', 45000, 9000, 4000, 1500, 800],
-            ['EMP004', 'Sarah Williams', 'sarah.w@example.com', 'Marketing', 'Marketing Lead', 55000, 11000, 6000, 2500, 1200],
-            ['EMP005', 'David Brown', 'david.b@example.com', 'IT', 'Junior Developer', 35000, 7000, 3000, 1000, 500],
+            ['EMP001', 'John Doe', 'john.doe@example.com', 'IT', 'Senior Developer', 50000, 10000, 5000, 2000, 1000, 500],
+            ['EMP002', 'Jane Smith', 'jane.smith@example.com', 'HR', 'HR Manager', 60000, 12000, 8000, 3000, 1500, 750],
+            ['EMP003', 'Mike Johnson', 'mike.j@example.com', 'Finance', 'Accountant', 45000, 9000, 4000, 1500, 800, 300],
+            ['EMP004', 'Sarah Williams', 'sarah.w@example.com', 'Marketing', 'Marketing Lead', 55000, 11000, 6000, 2500, 1200, 600],
+            ['EMP005', 'David Brown', 'david.b@example.com', 'IT', 'Junior Developer', 35000, 7000, 3000, 1000, 500, 200],
         ]
         
         # Write sample data
