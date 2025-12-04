@@ -400,7 +400,7 @@ class EmployeeListView(APIView):
                     queryset=SalaryComponent.objects.filter(upload_id=upload_id),
                     to_attr='upload_salary'
                 )
-            ).order_by('name')
+            ).order_by('employee_id')
 
             # Apply pagination
             paginator = StandardResultsPagination()
