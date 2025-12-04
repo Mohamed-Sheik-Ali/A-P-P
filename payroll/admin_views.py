@@ -19,7 +19,6 @@ class PendingUsersView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['title'] = 'Pending User Approvals'
         context['pending_count'] = self.get_queryset().count()
         context['total_users'] = UserProfile.objects.count()
         context['approved_users'] = UserProfile.objects.filter(approval_status='approved').count()
